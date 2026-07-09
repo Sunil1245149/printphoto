@@ -27,16 +27,19 @@ class PassportViewModel : ViewModel() {
 
     private val apiService = retrofit.create(PassportApiService::class.java)
 
-    fun uploadPhoto(context: Context, uri: Uri, layout: String) {
+    fun uploadPhoto(context: Context, uris: List<Uri>, layout: String) {
         _uiState.value = UiState.Loading
         viewModelScope.launch {
             try {
-                val file = uriToFile(context, uri)
-                val requestFile = file.asRequestBody("image/*".toMediaTypeOrNull())
-                val body = MultipartBody.Part.createFormData("image", file.name, requestFile)
+                val imageParts = uris.mapIndexed { index, uri ->
+                    val file = uriToFile(context, uri, "upload_image_$index.jpg")
+                    val requestFile = file.asRequestBody("image/*".toMediaTypeOrNull())
+                    MultipartBody.Part.createFormData("images", file.name, requestFile)
+                }
+                
                 val layoutBody = layout.toRequestBody("text/plain".toMediaTypeOrNull())
 
-                val response = apiService.uploadPhoto(body, layoutBody)
+                val response = apiService.uploadPhoto(imageParts, layoutBody)
                 if (response.isSuccessful) {
                     _uiState.value = UiState.Success
                 } else {
@@ -52,9 +55,9 @@ class PassportViewModel : ViewModel() {
         _uiState.value = UiState.Idle
     }
 
-    private fun uriToFile(context: Context, uri: Uri): File {
+    private fun uriToFile(context: Context, uri: Uri, fileName: String = "upload_image.jpg"): File {
         val inputStream = context.contentResolver.openInputStream(uri)
-        val file = File(context.cacheDir, "upload_image.jpg")
+        val file = File(context.cacheDir, fileName)
         val outputStream = FileOutputStream(file)
         inputStream?.use { input ->
             outputStream.use { output ->

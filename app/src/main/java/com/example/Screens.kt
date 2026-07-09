@@ -3,6 +3,7 @@ package com.example
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.camera.core.Camera
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageCaptureException
@@ -10,11 +11,10 @@ import androidx.camera.view.PreviewView
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CameraAlt
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.PhotoLibrary
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -39,6 +39,8 @@ import java.util.concurrent.Executors
 
 @Composable
 fun HomeScreen(
+    selectedLanguage: String,
+    onLanguageChange: (String) -> Unit,
     onCaptureClick: () -> Unit,
     onGalleryClick: (Uri) -> Unit
 ) {
@@ -50,45 +52,62 @@ fun HomeScreen(
 
     Scaffold(
         topBar = {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(64.dp)
-                    .background(MaterialTheme.colorScheme.surface)
-                    .padding(horizontal = 16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
+            Column(modifier = Modifier.statusBarsPadding()) {
                 Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(64.dp)
+                        .background(MaterialTheme.colorScheme.surface)
+                        .padding(horizontal = 16.dp),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(32.dp)
-                            .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(8.dp)),
-                        contentAlignment = Alignment.Center
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        Surface(
-                            modifier = Modifier.size(16.dp),
-                            shape = androidx.compose.foundation.shape.CircleShape,
-                            color = Color.Transparent,
-                            border = androidx.compose.foundation.BorderStroke(2.dp, Color.White)
-                        ) {}
-                    }
-                    Text(
-                        text = "PassportPrint Pro",
-                        style = MaterialTheme.typography.titleMedium.copy(
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = (-0.5).sp
+                        Box(
+                            modifier = Modifier
+                                .size(32.dp)
+                                .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(8.dp)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(Icons.Default.Print, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
+                        }
+                        Text(
+                            text = "PassportPrint Pro",
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = (-0.5).sp
+                            )
                         )
-                    )
+                    }
+                    
+                    // Live Status Indicator
+                    Surface(
+                        color = Color(0xFFE8F5E9),
+                        shape = RoundedCornerShape(16.dp),
+                        modifier = Modifier.padding(vertical = 8.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(8.dp)
+                                    .background(Color(0xFF4CAF50), CircleShape)
+                            )
+                            Text(
+                                "Live",
+                                color = Color(0xFF2E7D32),
+                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold)
+                            )
+                        }
+                    }
                 }
-                Icon(
-                    Icons.Default.CameraAlt,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                )
+                Divider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 0.5.dp)
             }
         },
         bottomBar = {
@@ -96,27 +115,40 @@ fun HomeScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(MaterialTheme.colorScheme.surface)
-                    .padding(vertical = 16.dp),
+                    .padding(bottom = 32.dp, top = 16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(32.dp),
-                    modifier = Modifier.alpha(0.4f)
+                LanguageSelector(selectedLanguage, onLanguageChange)
+                
+                Spacer(modifier = Modifier.height(24.dp))
+                
+                Button(
+                    onClick = onCaptureClick,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(72.dp)
+                        .padding(horizontal = 24.dp),
+                    shape = RoundedCornerShape(20.dp),
+                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
                 ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Box(Modifier.size(48.dp, 4.dp).background(MaterialTheme.colorScheme.onSurface, RoundedCornerShape(2.dp)))
-                        Text("4 Photos", fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                    }
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Box(Modifier.size(48.dp, 4.dp).background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f), RoundedCornerShape(2.dp)))
-                        Text("8 Photos", fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                    }
+                    Icon(Icons.Default.CameraAlt, contentDescription = null)
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text("Take Passport Photo", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                }
+                
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                OutlinedButton(
+                    onClick = { launcher.launch("image/*") },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(64.dp)
+                        .padding(horizontal = 24.dp),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Icon(Icons.Default.PhotoLibrary, contentDescription = null)
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text("Choose from Gallery")
                 }
             }
         }
@@ -125,106 +157,59 @@ fun HomeScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .padding(horizontal = 24.dp, vertical = 48.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.SpaceBetween
+                .padding(24.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Surface(
-                    modifier = Modifier
-                        .size(128.dp)
-                        .shadow(4.dp, RoundedCornerShape(40.dp)),
-                    shape = RoundedCornerShape(40.dp),
-                    color = MaterialTheme.colorScheme.primaryContainer
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            Icons.Default.CameraAlt,
-                            contentDescription = null,
-                            modifier = Modifier.size(64.dp),
-                            tint = Color(0xFF21005D)
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                Text(
-                    text = "Instant Passport",
-                    style = MaterialTheme.typography.headlineMedium.copy(
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Text(
-                    text = "Align your face within the guide for high-resolution 4x6 prints.",
-                    style = MaterialTheme.typography.bodyMedium.copy(
-                        fontWeight = FontWeight.Medium,
-                        lineHeight = 20.sp
-                    ),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                    modifier = Modifier.padding(horizontal = 32.dp)
-                )
-            }
-
-            Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                Button(
-                    onClick = onCaptureClick,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(64.dp)
-                        .shadow(8.dp, RoundedCornerShape(16.dp)),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-                ) {
-                    Icon(Icons.Default.CameraAlt, contentDescription = null)
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Text("Capture Passport Photo", fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                }
-
-                Button(
-                    onClick = { launcher.launch("image/*") },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(64.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                    )
-                ) {
-                    Icon(Icons.Default.PhotoLibrary, contentDescription = null)
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Text("Choose From Gallery", fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                }
-            }
-
+            Text(
+                "Print Layouts",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+            
             Surface(
-                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f),
-                shape = androidx.compose.foundation.shape.CircleShape
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(24.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
             ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Box(Modifier.size(8.dp).background(Color(0xFF488E3E), androidx.compose.foundation.shape.CircleShape))
-                    Text(
-                        "MERCHANT SYSTEM ONLINE",
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                Column(modifier = Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
+                    LayoutItem(Icons.Default.Grid4x4, "4 Photos (Standard)", "Perfect for 3.5x4.5cm")
+                    Divider(color = MaterialTheme.colorScheme.outlineVariant)
+                    LayoutItem(Icons.Default.GridView, "8 Photos (Economy)", "8 copies in one sheet")
+                    Divider(color = MaterialTheme.colorScheme.outlineVariant)
+                    LayoutItem(Icons.Default.Filter2, "2 Photos (8 Copies)", "4 copies each (4x6 Landscape)")
                 }
             }
+
+            Spacer(modifier = Modifier.weight(1f))
+            
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Info, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text("Select a layout and start capturing for printing.", style = MaterialTheme.typography.bodySmall)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun LayoutItem(icon: androidx.compose.ui.graphics.vector.ImageVector, title: String, desc: String) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(
+            modifier = Modifier.size(40.dp).background(MaterialTheme.colorScheme.primary.copy(0.1f), CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
+        }
+        Spacer(modifier = Modifier.width(16.dp))
+        Column {
+            Text(title, fontWeight = FontWeight.Bold)
+            Text(desc, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
@@ -238,6 +223,10 @@ fun CameraScreen(
     val lifecycleOwner = LocalLifecycleOwner.current
     val cameraExecutor: ExecutorService = remember { Executors.newSingleThreadExecutor() }
     val imageCapture = remember { ImageCapture.Builder().build() }
+    
+    var camera by remember { mutableStateOf<Camera?>(null) }
+    var torchEnabled by remember { mutableStateOf(false) }
+    var zoomRatio by remember { mutableFloatStateOf(1f) }
 
     Box(modifier = Modifier.fillMaxSize()) {
         AndroidView(
@@ -252,12 +241,13 @@ fun CameraScreen(
 
                     try {
                         cameraProvider.unbindAll()
-                        cameraProvider.bindToLifecycle(
+                        val cameraInstance = cameraProvider.bindToLifecycle(
                             lifecycleOwner,
                             CameraSelector.DEFAULT_BACK_CAMERA,
                             preview,
                             imageCapture
                         )
+                        camera = cameraInstance
                     } catch (e: Exception) {
                         e.printStackTrace()
                     }
@@ -269,6 +259,85 @@ fun CameraScreen(
 
         PassportOverlay(modifier = Modifier.fillMaxSize())
 
+        // Top Controls (Flash and Back)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 48.dp, start = 24.dp, end = 24.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(
+                onClick = onBack,
+                modifier = Modifier
+                    .background(Color.Black.copy(alpha = 0.3f), CircleShape)
+            ) {
+                Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = Color.White)
+            }
+
+            IconButton(
+                onClick = {
+                    torchEnabled = !torchEnabled
+                    camera?.cameraControl?.enableTorch(torchEnabled)
+                },
+                modifier = Modifier
+                    .background(if (torchEnabled) MaterialTheme.colorScheme.primary else Color.Black.copy(alpha = 0.3f), CircleShape)
+            ) {
+                Icon(
+                    imageVector = if (torchEnabled) Icons.Default.FlashOn else Icons.Default.FlashOff,
+                    contentDescription = "Torch",
+                    tint = Color.White
+                )
+            }
+        }
+
+        // Zoom Controls
+        Column(
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .padding(end = 24.dp, bottom = 120.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            IconButton(
+                onClick = {
+                    if (zoomRatio < 5f) {
+                        zoomRatio += 0.5f
+                        camera?.cameraControl?.setZoomRatio(zoomRatio)
+                    }
+                },
+                modifier = Modifier.background(Color.Black.copy(alpha = 0.3f), CircleShape)
+            ) {
+                Icon(Icons.Default.Add, contentDescription = "Zoom In", tint = Color.White)
+            }
+
+            Box(
+                modifier = Modifier
+                    .background(Color.Black.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
+                    .padding(horizontal = 8.dp, vertical = 4.dp)
+            ) {
+                Text(
+                    text = "${"%.1f".format(zoomRatio)}x",
+                    color = Color.White,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
+            IconButton(
+                onClick = {
+                    if (zoomRatio > 1f) {
+                        zoomRatio -= 0.5f
+                        camera?.cameraControl?.setZoomRatio(zoomRatio)
+                    }
+                },
+                modifier = Modifier.background(Color.Black.copy(alpha = 0.3f), CircleShape)
+            ) {
+                Icon(Icons.Default.Remove, contentDescription = "Zoom Out", tint = Color.White)
+            }
+        }
+
+        // Capture Button
         FloatingActionButton(
             onClick = {
                 val file = File(context.cacheDir, "${System.currentTimeMillis()}.jpg")
@@ -292,10 +361,11 @@ fun CameraScreen(
             },
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(bottom = 48.dp)
+                .padding(bottom = 64.dp)
                 .size(72.dp),
-            containerColor = MaterialTheme.colorScheme.primary,
-            contentColor = Color.White
+            containerColor = Color.White,
+            contentColor = Color.Black,
+            shape = CircleShape
         ) {
             Icon(Icons.Default.CameraAlt, contentDescription = "Capture", modifier = Modifier.size(36.dp))
         }
@@ -304,8 +374,10 @@ fun CameraScreen(
 
 @Composable
 fun PreviewScreen(
-    photoUri: Uri,
+    photoUris: List<Uri>,
     viewModel: PassportViewModel,
+    voiceManager: VoiceManager,
+    onAddMore: () -> Unit,
     onUploadSuccess: () -> Unit,
     onBack: () -> Unit
 ) {
@@ -314,8 +386,18 @@ fun PreviewScreen(
     val context = LocalContext.current
 
     LaunchedEffect(uiState) {
-        if (uiState is PassportViewModel.UiState.Success) {
-            onUploadSuccess()
+        when (uiState) {
+            is PassportViewModel.UiState.Success -> {
+                voiceManager.speakStatus("finished")
+                onUploadSuccess()
+            }
+            is PassportViewModel.UiState.Loading -> {
+                voiceManager.speakStatus("starting")
+            }
+            is PassportViewModel.UiState.Error -> {
+                voiceManager.speakStatus("error")
+            }
+            else -> {}
         }
     }
 
@@ -325,64 +407,123 @@ fun PreviewScreen(
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        AsyncImage(
-            model = photoUri,
-            contentDescription = "Selected Photo",
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(16.dp)),
-            contentScale = ContentScale.Fit
-        )
+        Surface(
+            modifier = Modifier.weight(1f),
+            shape = RoundedCornerShape(24.dp),
+            tonalElevation = 8.dp,
+            shadowElevation = 4.dp
+        ) {
+            if (photoUris.size > 1) {
+                Row(modifier = Modifier.fillMaxSize()) {
+                    photoUris.take(2).forEach { uri ->
+                        AsyncImage(
+                            model = uri,
+                            contentDescription = "Selected Photo",
+                            modifier = Modifier.weight(1f).fillMaxHeight(),
+                            contentScale = ContentScale.Fit
+                        )
+                    }
+                }
+            } else {
+                AsyncImage(
+                    model = photoUris.firstOrNull(),
+                    contentDescription = "Selected Photo",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Fit
+                )
+            }
+        }
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        Text("Select Print Layout", fontWeight = FontWeight.Bold, fontSize = 20.sp)
+        Text("Select Print Layout", fontWeight = FontWeight.Bold, fontSize = 22.sp)
+        Text("Standard size 3.5x4.5cm", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(vertical = 16.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             LayoutOption(
                 label = "4 Photos",
+                icon = Icons.Default.Grid4x4,
                 isSelected = selectedLayout == "4",
-                onClick = { selectedLayout = "4" }
+                onClick = { selectedLayout = "4" },
+                modifier = Modifier.weight(1f)
             )
             LayoutOption(
                 label = "8 Photos",
+                icon = Icons.Default.GridView,
                 isSelected = selectedLayout == "8",
-                onClick = { selectedLayout = "8" }
+                onClick = { selectedLayout = "8" },
+                modifier = Modifier.weight(1f)
+            )
+            LayoutOption(
+                label = "2x4 (8 Pcs)",
+                icon = Icons.Default.Filter2,
+                isSelected = selectedLayout == "2x4",
+                onClick = { selectedLayout = "2x4" },
+                modifier = Modifier.weight(1f)
             )
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(8.dp))
+
+        if (selectedLayout == "2x4" && photoUris.size < 2) {
+            OutlinedButton(
+                onClick = onAddMore,
+                modifier = Modifier.fillMaxWidth().height(56.dp),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Icon(Icons.Default.AddAPhoto, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Capture Second Photo")
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+        }
 
         if (uiState is PassportViewModel.UiState.Loading) {
-            CircularProgressIndicator()
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                LinearProgressIndicator(modifier = Modifier.fillMaxWidth().height(8.dp).clip(CircleShape))
+                Spacer(modifier = Modifier.height(12.dp))
+                Text("Sending to Print...", fontWeight = FontWeight.Medium)
+            }
         } else {
+            val canPrint = if (selectedLayout == "2x4") photoUris.size >= 2 else photoUris.isNotEmpty()
+            
             Button(
-                onClick = { viewModel.uploadPhoto(context, photoUri, selectedLayout) },
+                onClick = { viewModel.uploadPhoto(context, photoUris, selectedLayout) },
+                enabled = canPrint,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(64.dp),
-                shape = RoundedCornerShape(16.dp)
+                shape = RoundedCornerShape(16.dp),
+                elevation = ButtonDefaults.buttonElevation(defaultElevation = 8.dp)
             ) {
-                Text("Send to Print", fontSize = 18.sp)
+                Icon(Icons.Default.Send, contentDescription = null)
+                Spacer(modifier = Modifier.width(12.dp))
+                Text("Send to Print", fontSize = 18.sp, fontWeight = FontWeight.Bold)
             }
         }
 
         if (uiState is PassportViewModel.UiState.Error) {
-            Text(
-                text = (uiState as PassportViewModel.UiState.Error).message,
-                color = MaterialTheme.colorScheme.error,
-                modifier = Modifier.padding(top = 8.dp)
-            )
+            Surface(
+                modifier = Modifier.padding(top = 16.dp),
+                color = MaterialTheme.colorScheme.errorContainer,
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Text(
+                    text = (uiState as PassportViewModel.UiState.Error).message,
+                    color = MaterialTheme.colorScheme.onErrorContainer,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    style = MaterialTheme.typography.labelSmall
+                )
+            }
         }
 
-        TextButton(onClick = onBack) {
-            Text("Cancel")
+        TextButton(onClick = onBack, modifier = Modifier.padding(top = 8.dp)) {
+            Text("Go Back", color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
@@ -390,42 +531,120 @@ fun PreviewScreen(
 @Composable
 fun LayoutOption(
     label: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
     isSelected: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     Surface(
         onClick = onClick,
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(20.dp),
         color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-        tonalElevation = if (isSelected) 4.dp else 0.dp,
+        tonalElevation = if (isSelected) 8.dp else 0.dp,
         border = androidx.compose.foundation.BorderStroke(
             2.dp,
             if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent
         ),
-        modifier = Modifier.width(150.dp)
+        modifier = modifier
     ) {
-        Box(
-            modifier = Modifier
-                .padding(vertical = 20.dp, horizontal = 16.dp),
-            contentAlignment = Alignment.Center
+        Column(
+            modifier = Modifier.padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                if (isSelected) {
-                    Icon(
-                        imageVector = Icons.Default.Check,
-                        contentDescription = null,
-                        modifier = Modifier.size(20.dp),
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                }
-                Text(
-                    text = label,
-                    color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
-                    style = MaterialTheme.typography.titleMedium.copy(
-                        fontWeight = if (isSelected) FontWeight.ExtraBold else FontWeight.Medium
-                    )
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .background(
+                        if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f) else Color.Transparent,
+                        CircleShape
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(32.dp)
                 )
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                text = label,
+                color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.titleSmall.copy(
+                    fontWeight = if (isSelected) FontWeight.ExtraBold else FontWeight.Medium
+                )
+            )
+        }
+    }
+}
+
+@Composable
+fun DashboardCard(
+    modifier: Modifier = Modifier,
+    title: String,
+    subtitle: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    color: Color,
+    onClick: () -> Unit
+) {
+    Surface(
+        onClick = onClick,
+        modifier = modifier.height(140.dp),
+        shape = RoundedCornerShape(24.dp),
+        color = color
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.SpaceBetween
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .background(Color.White.copy(alpha = 0.5f), CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(icon, contentDescription = null, tint = Color.Black.copy(alpha = 0.7f))
+            }
+            Column {
+                Text(title, fontWeight = FontWeight.Bold, color = Color.Black)
+                Text(subtitle, style = MaterialTheme.typography.labelSmall, color = Color.Black.copy(alpha = 0.6f))
+            }
+        }
+    }
+}
+
+@Composable
+fun LanguageSelector(
+    selectedLanguage: String,
+    onLanguageChange: (String) -> Unit
+) {
+    val languages = listOf("English", "Hindi", "Marathi")
+    
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text("Voice Language", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Spacer(modifier = Modifier.height(8.dp))
+        Row(
+            modifier = Modifier
+                .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(24.dp))
+                .padding(4.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            languages.forEach { lang ->
+                val isSelected = selectedLanguage == lang
+                Surface(
+                    onClick = { onLanguageChange(lang) },
+                    shape = RoundedCornerShape(20.dp),
+                    color = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent,
+                    contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                ) {
+                    Text(
+                        text = lang,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold)
+                    )
+                }
             }
         }
     }
