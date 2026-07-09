@@ -85,22 +85,12 @@ fun MainNavigation(voiceManager: VoiceManager) {
                     }
                 },
                 onPortalClick = {
-                    navController.navigate("portal")
+                    // Portal is now a web portal hosted on Render
                 },
                 onGalleryClick = { uri ->
                     photoUris = listOf(uri)
                     navController.navigate("preview")
                 }
-            )
-        }
-        composable("portal") {
-            MerchantPortalScreen(
-                selectedLanguage = selectedLanguage,
-                onLanguageChange = { selectedLanguage = it },
-                onManualPrintClick = {
-                    // Manual print from gallery logic can be triggered here
-                },
-                onBack = { navController.popBackStack() }
             )
         }
         composable("camera") {

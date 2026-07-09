@@ -3,106 +3,304 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Passport Print | Merchant Portal</title>
+    <title>Merchant Portal | Passport Print Pro</title>
     <script src="/socket.io/socket.io.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         :root {
-            --primary: #0D47A1;
-            --bg: #F5F7FA;
-            --card: #FFFFFF;
-            --text: #333333;
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --bg: #f8fafc;
+            --card: #ffffff;
+            --text: #1e293b;
+            --text-light: #64748b;
+            --success: #22c55e;
         }
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Inter', sans-serif;
             background-color: var(--bg);
             color: var(--text);
             margin: 0;
-            padding: 20px;
+            line-height: 1.5;
         }
         .container {
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 0 auto;
+            padding: 40px;
         }
         header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 30px;
+            margin-bottom: 40px;
         }
-        h1 { margin: 0; color: var(--primary); }
-        .grid {
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .logo i {
+            font-size: 24px;
+            color: var(--primary);
+            background: #dbeafe;
+            padding: 10px;
+            border-radius: 12px;
+        }
+        .logo h1 {
+            font-size: 24px;
+            font-weight: 800;
+            margin: 0;
+            letter-spacing: -0.025em;
+        }
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+        .server-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: #ecfdf5;
+            color: #065f46;
+            padding: 8px 16px;
+            border-radius: 99px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        .server-status .dot {
+            width: 8px;
+            height: 8px;
+            background: var(--success);
+            border-radius: 50%;
+            box-shadow: 0 0 0 4px #dcfce7;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(34, 197, 94, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+        }
+
+        .main-grid {
             display: grid;
-            grid-template-columns: 1fr 350px;
-            gap: 30px;
+            grid-template-columns: 320px 1fr 380px;
+            gap: 32px;
         }
         .card {
             background: var(--card);
-            border-radius: 12px;
-            padding: 20px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-        }
-        .status-badge {
-            padding: 4px 12px;
             border-radius: 20px;
-            font-size: 0.8em;
-            font-weight: bold;
+            padding: 24px;
+            box-shadow: 0 4px 20px -2px rgba(0,0,0,0.05);
+            border: 1px solid rgba(0,0,0,0.02);
         }
-        .status-completed { background: #E8F5E9; color: #2E7D32; }
-        .status-processing { background: #FFF3E0; color: #EF6C00; }
-        
-        .print-item {
-            display: flex;
-            align-items: center;
-            padding: 15px;
-            border-bottom: 1px solid #EEE;
-        }
-        .print-item img {
-            width: 80px;
-            height: 100px;
-            object-fit: cover;
-            border-radius: 4px;
-            margin-right: 15px;
-        }
-        .print-details { flex: 1; }
-        .settings-toggle {
+        .card h3 {
+            margin-top: 0;
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 20px;
             display: flex;
             align-items: center;
             gap: 10px;
+        }
+
+        /* Sidebar Actions */
+        .action-button {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            width: 100%;
+            padding: 14px;
+            background: var(--bg);
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
             cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 12px;
+            transition: all 0.2s;
+            color: var(--text);
+            text-decoration: none;
+        }
+        .action-button:hover {
+            border-color: var(--primary);
+            background: #eff6ff;
+            color: var(--primary);
+        }
+        .action-button.primary {
+            background: var(--primary);
+            color: white;
+            border: none;
+        }
+        .action-button.primary:hover {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+        }
+
+        /* History List */
+        .history-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            max-height: 600px;
+            overflow-y: auto;
+            padding-right: 8px;
+        }
+        .history-list::-webkit-scrollbar { width: 6px; }
+        .history-list::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
+
+        .print-item {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            border-radius: 14px;
+            background: #fff;
+            border: 1px solid #f1f5f9;
+            transition: transform 0.2s;
+        }
+        .print-item:hover { transform: scale(1.02); border-color: #e2e8f0; }
+        .print-item img {
+            width: 50px;
+            height: 50px;
+            border-radius: 8px;
+            object-fit: cover;
+            margin-right: 12px;
+            background: #f1f5f9;
+        }
+        .job-info { flex: 1; }
+        .job-id { font-weight: 700; font-size: 14px; }
+        .job-time { font-size: 12px; color: var(--text-light); }
+        .job-status {
+            padding: 4px 10px;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+        .status-completed { background: #dcfce7; color: #166534; }
+        .status-processing { background: #fef3c7; color: #92400e; }
+
+        /* Preview Area */
+        .preview-container {
+            position: sticky;
+            top: 40px;
         }
         #live-preview {
             width: 100%;
-            height: auto;
-            border: 2px dashed #CCC;
-            border-radius: 8px;
-            margin-top: 15px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px -5px rgba(0,0,0,0.1);
+            background: #f1f5f9;
+            min-height: 400px;
+            object-fit: contain;
         }
+        .empty-preview {
+            height: 400px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-light);
+            background: #f8fafc;
+            border: 2px dashed #e2e8f0;
+            border-radius: 12px;
+        }
+
+        /* Language Switcher */
+        .lang-switcher {
+            display: flex;
+            gap: 8px;
+            margin-top: 20px;
+        }
+        .lang-btn {
+            flex: 1;
+            padding: 8px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            background: white;
+            font-size: 13px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        .lang-btn.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        /* Modal / File Input */
+        #manualUpload { display: none; }
     </style>
 </head>
 <body>
     <div class="container">
         <header>
-            <h1>Passport Print Portal</h1>
-            <div class="card" style="padding: 10px 20px;">
-                <label class="settings-toggle">
-                    <input type="checkbox" id="voiceToggle"> 
-                    Voice Notifications
-                </label>
+            <div class="logo">
+                <i class="fas fa-print"></i>
+                <h1>PassportPrint Pro</h1>
+            </div>
+            <div class="header-actions">
+                <div class="server-status">
+                    <div class="dot"></div>
+                    System Online
+                </div>
             </div>
         </header>
 
-        <div class="grid">
+        <div class="main-grid">
+            <!-- Sidebar Actions -->
             <div class="card">
-                <h3>Print History</h3>
-                <div id="history-list">
-                    <!-- History items will appear here -->
+                <h3><i class="fas fa-bolt"></i> Quick Actions</h3>
+                <input type="file" id="manualUpload" multiple accept="image/*">
+                <button class="action-button primary" onclick="document.getElementById('manualUpload').click()">
+                    <i class="fas fa-cloud-upload-alt"></i> Manual Print Upload
+                </button>
+                <a href="#" class="action-button">
+                    <i class="fas fa-desktop"></i> Download Desktop Agent
+                </a>
+                <a href="#" class="action-button">
+                    <i class="fas fa-file-pdf"></i> User Manual (Hindi/Eng)
+                </a>
+
+                <h3 style="margin-top: 32px;"><i class="fas fa-language"></i> Portal Language</h3>
+                <div class="lang-switcher">
+                    <button class="lang-btn active">English</button>
+                    <button class="lang-btn">हिन्दी</button>
+                </div>
+
+                <h3 style="margin-top: 32px;"><i class="fas fa-cog"></i> Settings</h3>
+                <label style="display: flex; align-items: center; gap: 10px; font-size: 14px; cursor: pointer;">
+                    <input type="checkbox" id="voiceToggle" checked> Enable Voice Alerts
+                </label>
+            </div>
+
+            <!-- History -->
+            <div class="card">
+                <h3><i class="fas fa-history"></i> Live Print Queue</h3>
+                <div id="history-list" class="history-list">
+                    <!-- History items -->
                 </div>
             </div>
 
-            <div class="card">
-                <h3>Latest Print Preview</h3>
-                <div id="preview-container">
-                    <p style="color: #999; text-align: center;">No active jobs</p>
+            <!-- Preview -->
+            <div class="preview-container">
+                <div class="card">
+                    <h3><i class="fas fa-eye"></i> Layout Preview</h3>
+                    <div id="preview-area">
+                        <div class="empty-preview">
+                            <i class="fas fa-image fa-3x" style="margin-bottom: 16px; opacity: 0.2;"></i>
+                            <p>Waiting for print jobs...</p>
+                        </div>
+                    </div>
+                    <div id="job-details" style="margin-top: 20px; display: none;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span id="job-id-label" style="font-weight: 800; color: var(--primary);"></span>
+                            <button onclick="window.print()" style="background: none; border: 1px solid #e2e8f0; padding: 6px 12px; border-radius: 8px; cursor: pointer;">
+                                <i class="fas fa-print"></i>
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -113,8 +311,9 @@
         let voiceEnabled = true;
 
         const historyList = document.getElementById('history-list');
-        const previewContainer = document.getElementById('preview-container');
+        const previewArea = document.getElementById('preview-area');
         const voiceToggle = document.getElementById('voiceToggle');
+        const manualUpload = document.getElementById('manualUpload');
 
         socket.on('initial-data', (data) => {
             voiceEnabled = data.settings.voiceEnabled;
@@ -124,18 +323,42 @@
         });
 
         socket.on('job-received', (job) => {
-            if (voiceEnabled) speak("New passport photo received");
-            // Show as processing
-            const item = createJobElement(job);
-            historyList.prepend(item);
+            if (voiceEnabled) speak("New passport job processing");
+            refreshHistory();
         });
 
         socket.on('job-completed', (job) => {
-            if (voiceEnabled) speak("Printing started");
+            if (voiceEnabled) speak("Printing ready");
             updatePreview(job);
-            // Update historical item status
             refreshHistory();
         });
+
+        manualUpload.onchange = async () => {
+            const files = manualUpload.files;
+            if (!files.length) return;
+
+            const formData = new FormData();
+            for (let i = 0; i < files.length; i++) {
+                formData.append('image', files[i]);
+            }
+            // Ask for layout
+            const layout = prompt("Enter Layout (4, 8, or 2x4):", "8") || "8";
+            formData.append('layout', layout);
+
+            try {
+                const res = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                if (res.ok) {
+                    alert("Uploaded successfully! Check queue.");
+                } else {
+                    alert("Upload failed.");
+                }
+            } catch (e) {
+                alert("Network error.");
+            }
+        };
 
         voiceToggle.onchange = () => {
             voiceEnabled = voiceToggle.checked;
@@ -155,12 +378,12 @@
             const div = document.createElement('div');
             div.className = 'print-item';
             div.innerHTML = `
-                <img src="${job.preview || 'https://via.placeholder.com/80x100?text=...'}" alt="Preview">
-                <div class="print-details">
-                    <div style="font-weight: bold;">Job #${job.id} - ${job.layout} photos</div>
-                    <div style="font-size: 0.9em; color: #666;">${job.time || 'Just now'}</div>
+                <img src="${job.preview}" alt="Preview" onclick="updatePreview(${JSON.stringify(job).replace(/"/g, '&quot;')})">
+                <div class="job-info">
+                    <div class="job-id">Job #${job.id.toString().slice(-4)}</div>
+                    <div class="job-time">${job.layout} Photos • ${job.time}</div>
                 </div>
-                <span class="status-badge status-${job.status?.toLowerCase()}">${job.status}</span>
+                <span class="job-status status-${job.status?.toLowerCase()}">${job.status}</span>
             `;
             return div;
         }
@@ -170,12 +393,9 @@
         }
 
         function updatePreview(job) {
-            previewContainer.innerHTML = `
-                <div style="text-align: center;">
-                    <img id="live-preview" src="${job.preview}" alt="Live Preview">
-                    <p>Job #${job.id} | Layout: ${job.layout}</p>
-                </div>
-            `;
+            document.getElementById('job-details').style.display = 'block';
+            document.getElementById('job-id-label').innerText = `JOB #${job.id.toString().slice(-4)}`;
+            previewArea.innerHTML = `<img id="live-preview" src="${job.preview}" alt="Live Preview">`;
         }
 
         function refreshHistory() {
