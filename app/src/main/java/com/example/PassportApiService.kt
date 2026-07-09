@@ -11,7 +11,7 @@ interface PassportApiService {
     @Multipart
     @POST("upload")
     suspend fun uploadPhoto(
-        @Part image: List<MultipartBody.Part>,
+        @Part images: List<MultipartBody.Part>,
         @Part("layout") layout: RequestBody // "4", "8", or "2x4"
     ): Response<Unit>
 }

@@ -85,9 +85,6 @@ fun HomeScreen(
                     }
                     
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        TextButton(onClick = { onLanguageChange(if (selectedLanguage == "English") "Hindi" else "English") }) {
-                            Text(if (selectedLanguage == "English") "हिन्दी" else "ENG")
-                        }
                         IconButton(onClick = onPortalClick) {
                             Icon(Icons.Default.Settings, contentDescription = "Merchant Portal", tint = MaterialTheme.colorScheme.primary)
                         }
@@ -140,18 +137,32 @@ fun HomeScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
                 .padding(24.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(
-                "Welcome to Print Station",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold
+            LanguageSelector(
+                selectedLanguage = selectedLanguage,
+                onLanguageChange = onLanguageChange
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            DashboardCard(
+                title = "Passport Capture",
+                subtitle = "Standard 3.5x4.5cm photos",
+                icon = Icons.Default.CameraAlt,
+                color = MaterialTheme.colorScheme.primaryContainer,
+                onClick = onCaptureClick,
+                modifier = Modifier.fillMaxWidth()
             )
             
-            Text(
-                "Quick access for professional passport photos and layouts.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+            DashboardCard(
+                title = "Print from Files",
+                subtitle = "Use your existing photos",
+                icon = Icons.Default.PhotoLibrary,
+                color = MaterialTheme.colorScheme.secondaryContainer,
+                onClick = { launcher.launch("image/*") },
+                modifier = Modifier.fillMaxWidth()
             )
 
             Spacer(modifier = Modifier.height(8.dp))

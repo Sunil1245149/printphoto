@@ -258,7 +258,11 @@
                 </button>
                 <div class="card">
                     <h3><i class="fas fa-desktop"></i> Auto-Print Setup</h3>
-                    <p style="font-size: 13px; color: var(--text-light);">Run this command on your Windows/Linux PC to enable automatic printing.</p>
+                    <p style="font-size: 13px; color: var(--text-light);">Step 1: Install required library:</p>
+                    <code style="display: block; background: #1e293b; color: #f1f5f9; padding: 12px; border-radius: 8px; font-size: 12px; margin-bottom: 12px;">
+                        pip install "python-socketio[client]" requests
+                    </code>
+                    <p style="font-size: 13px; color: var(--text-light);">Step 2: Run the agent script:</p>
                     <code style="display: block; background: #1e293b; color: #f1f5f9; padding: 12px; border-radius: 8px; font-size: 12px; margin-bottom: 12px;">
                         python print_agent.py
                     </code>
@@ -315,6 +319,7 @@
     <script>
         const socket = io();
         let voiceEnabled = true;
+        let voiceLanguage = 'English';
 
         const historyList = document.getElementById('history-list');
         const previewArea = document.getElementById('preview-area');
@@ -322,17 +327,26 @@
         const manualUpload = document.getElementById('manualUpload');
 
         socket.on('initial-data', (data) => {
-            voiceEnabled = data.settings.voiceEnabled;
+            voiceEnabled = data.settings.voiceEnabled !== undefined ? data.settings.voiceEnabled : true;
             voiceLanguage = data.settings.voiceLanguage || 'English';
             voiceToggle.checked = voiceEnabled;
-            setLang(voiceLanguage);
+            updateLangUI(voiceLanguage);
             data.history.forEach(addJobToHistory);
             if (data.history.length > 0) updatePreview(data.history[0]);
         });
 
+        function updateLangUI(lang) {
+            document.querySelectorAll('.lang-btn').forEach(btn => {
+                if (btn.innerText.includes(lang) || (lang === 'Hindi' && btn.innerText.includes('हिन्दी'))) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+        }
+
         socket.on('job-received', (job) => {
             if (voiceEnabled) speak("New passport job processing");
-            refreshHistory();
         });
 
         socket.on('job-completed', (job) => {
@@ -370,28 +384,23 @@
 
         voiceToggle.onchange = () => {
             voiceEnabled = voiceToggle.checked;
-            fetch('/settings', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ voiceEnabled })
-            });
+            saveSettings();
         };
 
-        let voiceLanguage = 'English';
-
-        function setLang(lang) {
+        function setLang(lang, shouldSpeak = true) {
             voiceLanguage = lang;
-            document.querySelectorAll('.lang-btn').forEach(btn => {
-                if (btn.innerText.includes(lang) || (lang === 'Hindi' && btn.innerText.includes('हिन्दी'))) {
-                    btn.classList.add('active');
-                } else {
-                    btn.classList.remove('active');
-                }
-            });
+            updateLangUI(lang);
+            saveSettings();
+            if (shouldSpeak) {
+                speak(lang === 'Hindi' ? "भाषा बदल दी गई है" : "Language changed to English");
+            }
+        }
+
+        function saveSettings() {
             fetch('/settings', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ voiceLanguage: lang, voiceEnabled })
+                body: JSON.stringify({ voiceLanguage, voiceEnabled })
             });
         }
 
