@@ -57,13 +57,18 @@ class PassportViewModel : ViewModel() {
                 val layoutBody = layout.toRequestBody("text/plain".toMediaTypeOrNull())
 
                 val response = apiService.uploadPhoto(imageParts, layoutBody)
+                
                 if (response.isSuccessful) {
-                    val body = response.body()
-                    if (body?.success == true) {
-                        _uiState.value = UiState.Success
-                    } else {
-                        val errorMsg = body?.message ?: body?.error ?: "Server reported failure"
-                        _uiState.value = UiState.Error(errorMsg)
+                    try {
+                        val body = response.body()
+                        if (body?.success == true) {
+                            _uiState.value = UiState.Success
+                        } else {
+                            val errorMsg = body?.message ?: body?.error ?: "Server reported failure"
+                            _uiState.value = UiState.Error(errorMsg)
+                        }
+                    } catch (e: com.squareup.moshi.JsonEncodingException) {
+                        _uiState.value = UiState.Error("Server returned non-JSON response. Check your URL.")
                     }
                 } else {
                     val errorBody = response.errorBody()?.string()
@@ -75,6 +80,8 @@ class PassportViewModel : ViewModel() {
                     is java.net.UnknownHostException -> "Unknown Host: URL invalid or no Internet"
                     is java.net.ConnectException -> "Connection Refused: Server down or URL wrong"
                     is java.net.SocketTimeoutException -> "Timeout: Check connection speed"
+                    is com.squareup.moshi.JsonDataException -> "Data Error: Server returned unexpected JSON format"
+                    is com.squareup.moshi.JsonEncodingException -> "Format Error: Server returned non-JSON (likely HTML error page)"
                     else -> "${e.javaClass.simpleName}: ${e.message}"
                 }
                 _uiState.value = UiState.Error("Network Error: $message")
