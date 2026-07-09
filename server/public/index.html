@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Passport Print | Merchant Portal</title>
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        :root {
+            --primary: #0D47A1;
+            --bg: #F5F7FA;
+            --card: #FFFFFF;
+            --text: #333333;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+        h1 { margin: 0; color: var(--primary); }
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 350px;
+            gap: 30px;
+        }
+        .card {
+            background: var(--card);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8em;
+            font-weight: bold;
+        }
+        .status-completed { background: #E8F5E9; color: #2E7D32; }
+        .status-processing { background: #FFF3E0; color: #EF6C00; }
+        
+        .print-item {
+            display: flex;
+            align-items: center;
+            padding: 15px;
+            border-bottom: 1px solid #EEE;
+        }
+        .print-item img {
+            width: 80px;
+            height: 100px;
+            object-fit: cover;
+            border-radius: 4px;
+            margin-right: 15px;
+        }
+        .print-details { flex: 1; }
+        .settings-toggle {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+        }
+        #live-preview {
+            width: 100%;
+            height: auto;
+            border: 2px dashed #CCC;
+            border-radius: 8px;
+            margin-top: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Passport Print Portal</h1>
+            <div class="card" style="padding: 10px 20px;">
+                <label class="settings-toggle">
+                    <input type="checkbox" id="voiceToggle"> 
+                    Voice Notifications
+                </label>
+            </div>
+        </header>
+
+        <div class="grid">
+            <div class="card">
+                <h3>Print History</h3>
+                <div id="history-list">
+                    <!-- History items will appear here -->
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>Latest Print Preview</h3>
+                <div id="preview-container">
+                    <p style="color: #999; text-align: center;">No active jobs</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const socket = io();
+        let voiceEnabled = true;
+
+        const historyList = document.getElementById('history-list');
+        const previewContainer = document.getElementById('preview-container');
+        const voiceToggle = document.getElementById('voiceToggle');
+
+        socket.on('initial-data', (data) => {
+            voiceEnabled = data.settings.voiceEnabled;
+            voiceToggle.checked = voiceEnabled;
+            data.history.forEach(addJobToHistory);
+            if (data.history.length > 0) updatePreview(data.history[0]);
+        });
+
+        socket.on('job-received', (job) => {
+            if (voiceEnabled) speak("New passport photo received");
+            // Show as processing
+            const item = createJobElement(job);
+            historyList.prepend(item);
+        });
+
+        socket.on('job-completed', (job) => {
+            if (voiceEnabled) speak("Printing started");
+            updatePreview(job);
+            // Update historical item status
+            refreshHistory();
+        });
+
+        voiceToggle.onchange = () => {
+            voiceEnabled = voiceToggle.checked;
+            fetch('/settings', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ voiceEnabled })
+            });
+        };
+
+        function speak(text) {
+            const msg = new SpeechSynthesisUtterance(text);
+            window.speechSynthesis.speak(msg);
+        }
+
+        function createJobElement(job) {
+            const div = document.createElement('div');
+            div.className = 'print-item';
+            div.innerHTML = `
+                <img src="${job.preview || 'https://via.placeholder.com/80x100?text=...'}" alt="Preview">
+                <div class="print-details">
+                    <div style="font-weight: bold;">Job #${job.id} - ${job.layout} photos</div>
+                    <div style="font-size: 0.9em; color: #666;">${job.time || 'Just now'}</div>
+                </div>
+                <span class="status-badge status-${job.status?.toLowerCase()}">${job.status}</span>
+            `;
+            return div;
+        }
+
+        function addJobToHistory(job) {
+            historyList.appendChild(createJobElement(job));
+        }
+
+        function updatePreview(job) {
+            previewContainer.innerHTML = `
+                <div style="text-align: center;">
+                    <img id="live-preview" src="${job.preview}" alt="Live Preview">
+                    <p>Job #${job.id} | Layout: ${job.layout}</p>
+                </div>
+            `;
+        }
+
+        function refreshHistory() {
+            fetch('/history')
+                .then(r => r.json())
+                .then(data => {
+                    historyList.innerHTML = '';
+                    data.forEach(addJobToHistory);
+                });
+        }
+    </script>
+</body>
+</html>
