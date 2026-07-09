@@ -34,14 +34,28 @@ let printQueue = [];
 let history = [];
 
 // API: Upload from Android App
+app.get('/ping', (req, res) => res.send('pong'));
+
 app.post('/upload', upload.any(), async (req, res) => {
     console.log('--- New Upload Request ---');
-    console.log('Headers:', req.headers);
-    console.log('Body:', req.body);
-    console.log('Files:', req.files?.length);
-
+    console.log('Timestamp:', new Date().toISOString());
+    console.log('Headers:', JSON.stringify(req.headers, null, 2));
+    
     try {
-        const { layout } = req.body;
+        let layout = '8';
+        if (req.body && req.body.layout) {
+            layout = req.body.layout;
+            if (Array.isArray(layout)) layout = layout[0];
+            if (typeof layout !== 'string') layout = layout.toString();
+        }
+        
+        console.log('Body fields:', Object.keys(req.body || {}));
+        console.log('Effective Layout:', layout);
+        console.log('Files count:', req.files?.length);
+        if (req.files) {
+            req.files.forEach(f => console.log(` - File: field=${f.fieldname}, name=${f.originalname}, size=${f.size}`));
+        }
+
         const files = req.files?.filter(f => f.fieldname === 'image') || [];
         
         if (files.length === 0) {
@@ -50,7 +64,7 @@ app.post('/upload', upload.any(), async (req, res) => {
         }
 
         const timestamp = Date.now();
-        const outputPath = `outputs/print_${timestamp}.png`;
+        const outputPath = path.join('outputs', `print_${timestamp}.png`);
         
         io.emit('job-received', { id: timestamp, status: 'Processing' });
 
@@ -164,6 +178,8 @@ app.post('/upload', upload.any(), async (req, res) => {
         await finalOutput
             .composite(compositeArr)
             .toFile(outputPath);
+
+        console.log(`Job completed and saved to ${outputPath}`);
 
         // Cleanup uploads
         files.forEach(f => fs.remove(f.path).catch(console.error));

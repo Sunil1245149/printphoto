@@ -11,6 +11,7 @@ import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.moshi.MoshiConverterFactory
 import java.io.File
@@ -20,8 +21,20 @@ class PassportViewModel : ViewModel() {
     private val _uiState = MutableStateFlow<UiState>(UiState.Idle)
     val uiState = _uiState.asStateFlow()
 
+    private val logging = HttpLoggingInterceptor().apply {
+        level = HttpLoggingInterceptor.Level.BODY
+    }
+    
+    private val client = okhttp3.OkHttpClient.Builder()
+        .addInterceptor(logging)
+        .connectTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+        .readTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+        .writeTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+        .build()
+
     private val retrofit = Retrofit.Builder()
         .baseUrl(Constants.BACKEND_URL)
+        .client(client)
         .addConverterFactory(MoshiConverterFactory.create())
         .build()
 
@@ -41,12 +54,20 @@ class PassportViewModel : ViewModel() {
 
                 val response = apiService.uploadPhoto(imageParts, layoutBody)
                 if (response.isSuccessful) {
-                    _uiState.value = UiState.Success
+                    val body = response.body()
+                    if (body?.success == true) {
+                        _uiState.value = UiState.Success
+                    } else {
+                        val errorMsg = body?.message ?: body?.error ?: "Server reported failure"
+                        _uiState.value = UiState.Error(errorMsg)
+                    }
                 } else {
-                    _uiState.value = UiState.Error("Upload failed: ${response.code()}")
+                    val errorBody = response.errorBody()?.string()
+                    _uiState.value = UiState.Error("Server Error (${response.code()}): $errorBody")
                 }
             } catch (e: Exception) {
-                _uiState.value = UiState.Error(e.message ?: "Unknown error")
+                e.printStackTrace()
+                _uiState.value = UiState.Error("Network Error: ${e.javaClass.simpleName}: ${e.message}")
             }
         }
     }
