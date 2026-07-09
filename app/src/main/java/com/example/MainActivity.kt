@@ -73,10 +73,7 @@ fun MainNavigation(voiceManager: VoiceManager) {
     NavHost(navController = navController, startDestination = "home") {
         composable("home") {
             HomeScreen(
-                selectedLanguage = selectedLanguage,
-                onLanguageChange = { selectedLanguage = it },
                 onCaptureClick = {
-                    photoUris = emptyList()
                     if (ContextCompat.checkSelfPermission(
                             context,
                             Manifest.permission.CAMERA
@@ -87,10 +84,23 @@ fun MainNavigation(voiceManager: VoiceManager) {
                         permissionLauncher.launch(Manifest.permission.CAMERA)
                     }
                 },
+                onPortalClick = {
+                    navController.navigate("portal")
+                },
                 onGalleryClick = { uri ->
                     photoUris = listOf(uri)
                     navController.navigate("preview")
                 }
+            )
+        }
+        composable("portal") {
+            MerchantPortalScreen(
+                selectedLanguage = selectedLanguage,
+                onLanguageChange = { selectedLanguage = it },
+                onManualPrintClick = {
+                    // Manual print from gallery logic can be triggered here
+                },
+                onBack = { navController.popBackStack() }
             )
         }
         composable("camera") {

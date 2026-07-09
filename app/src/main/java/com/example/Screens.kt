@@ -39,9 +39,8 @@ import java.util.concurrent.Executors
 
 @Composable
 fun HomeScreen(
-    selectedLanguage: String,
-    onLanguageChange: (String) -> Unit,
     onCaptureClick: () -> Unit,
+    onPortalClick: () -> Unit,
     onGalleryClick: (Uri) -> Unit
 ) {
     val launcher = rememberLauncherForActivityResult(
@@ -68,43 +67,23 @@ fun HomeScreen(
                     ) {
                         Box(
                             modifier = Modifier
-                                .size(32.dp)
-                                .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(8.dp)),
+                                .size(36.dp)
+                                .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(10.dp)),
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(Icons.Default.Print, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
+                            Icon(Icons.Default.Print, contentDescription = null, tint = Color.White, modifier = Modifier.size(22.dp))
                         }
                         Text(
                             text = "PassportPrint Pro",
-                            style = MaterialTheme.typography.titleMedium.copy(
-                                fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.titleLarge.copy(
+                                fontWeight = FontWeight.ExtraBold,
                                 letterSpacing = (-0.5).sp
                             )
                         )
                     }
                     
-                    // Live Status Indicator
-                    Surface(
-                        color = Color(0xFFE8F5E9),
-                        shape = RoundedCornerShape(16.dp),
-                        modifier = Modifier.padding(vertical = 8.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(8.dp)
-                                    .background(Color(0xFF4CAF50), CircleShape)
-                            )
-                            Text(
-                                "Live",
-                                color = Color(0xFF2E7D32),
-                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold)
-                            )
-                        }
+                    IconButton(onClick = onPortalClick) {
+                        Icon(Icons.Default.Settings, contentDescription = "Merchant Portal", tint = MaterialTheme.colorScheme.primary)
                     }
                 }
                 Divider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 0.5.dp)
@@ -118,10 +97,6 @@ fun HomeScreen(
                     .padding(bottom = 32.dp, top = 16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                LanguageSelector(selectedLanguage, onLanguageChange)
-                
-                Spacer(modifier = Modifier.height(24.dp))
-                
                 Button(
                     onClick = onCaptureClick,
                     modifier = Modifier
@@ -129,11 +104,11 @@ fun HomeScreen(
                         .height(72.dp)
                         .padding(horizontal = 24.dp),
                     shape = RoundedCornerShape(20.dp),
-                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
+                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 8.dp)
                 ) {
                     Icon(Icons.Default.CameraAlt, contentDescription = null)
                     Spacer(modifier = Modifier.width(12.dp))
-                    Text("Take Passport Photo", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                    Text("Start Capture", fontSize = 18.sp, fontWeight = FontWeight.Bold)
                 }
                 
                 Spacer(modifier = Modifier.height(12.dp))
@@ -148,7 +123,7 @@ fun HomeScreen(
                 ) {
                     Icon(Icons.Default.PhotoLibrary, contentDescription = null)
                     Spacer(modifier = Modifier.width(12.dp))
-                    Text("Choose from Gallery")
+                    Text("Select from Gallery")
                 }
             }
         }
@@ -161,10 +136,107 @@ fun HomeScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Text(
-                "Print Layouts",
-                style = MaterialTheme.typography.titleMedium,
+                "Welcome to Print Station",
+                style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold
             )
+            
+            Text(
+                "Quick access for professional passport photos and layouts.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(24.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+            ) {
+                Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Text("Popular Layouts", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                    LayoutItem(Icons.Default.Grid4x4, "4 Photos (Standard)", "Perfect for 3.5x4.5cm")
+                    LayoutItem(Icons.Default.GridView, "8 Photos (Economy)", "8 copies in one sheet")
+                    LayoutItem(Icons.Default.Filter2, "2 Photos (8 Copies)", "4 copies each (4x6 Landscape)")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun MerchantPortalScreen(
+    selectedLanguage: String,
+    onLanguageChange: (String) -> Unit,
+    onManualPrintClick: () -> Unit,
+    onBack: () -> Unit
+) {
+    Scaffold(
+        topBar = {
+            Column(modifier = Modifier.statusBarsPadding()) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(64.dp)
+                        .padding(horizontal = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Merchant Portal", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold)
+                    Spacer(modifier = Modifier.weight(1f))
+                    
+                    // Live Indicator
+                    Surface(
+                        color = Color(0xFFE8F5E9),
+                        shape = RoundedCornerShape(16.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Box(modifier = Modifier.size(8.dp).background(Color(0xFF4CAF50), CircleShape))
+                            Text("Live", color = Color(0xFF2E7D32), style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold))
+                        }
+                    }
+                }
+                Divider(color = MaterialTheme.colorScheme.outlineVariant)
+            }
+        }
+    ) { padding ->
+        Column(
+            modifier = Modifier
+                .padding(padding)
+                .padding(24.dp)
+                .fillMaxSize(),
+            verticalArrangement = Arrangement.spacedBy(24.dp)
+        ) {
+            LanguageSelector(selectedLanguage, onLanguageChange)
+            
+            Text("Operations Dashboard", fontWeight = FontWeight.Bold, fontSize = 20.sp)
+            
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                DashboardCard(
+                    modifier = Modifier.weight(1f),
+                    title = "Manual Print",
+                    subtitle = "Gallery Upload",
+                    icon = Icons.Default.Description,
+                    color = Color(0xFFE3F2FD),
+                    onClick = onManualPrintClick
+                )
+                DashboardCard(
+                    modifier = Modifier.weight(1f),
+                    title = "Print Agent",
+                    subtitle = "Toolbox (.exe)",
+                    icon = Icons.Default.Download,
+                    color = Color(0xFFF3E5F5),
+                    onClick = { /* Handle download */ }
+                )
+            }
             
             Surface(
                 modifier = Modifier.fillMaxWidth(),
@@ -172,30 +244,16 @@ fun HomeScreen(
                 color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
             ) {
                 Column(modifier = Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
-                    LayoutItem(Icons.Default.Grid4x4, "4 Photos (Standard)", "Perfect for 3.5x4.5cm")
-                    Divider(color = MaterialTheme.colorScheme.outlineVariant)
-                    LayoutItem(Icons.Default.GridView, "8 Photos (Economy)", "8 copies in one sheet")
-                    Divider(color = MaterialTheme.colorScheme.outlineVariant)
-                    LayoutItem(Icons.Default.Filter2, "2 Photos (8 Copies)", "4 copies each (4x6 Landscape)")
-                }
-            }
-
-            Spacer(modifier = Modifier.weight(1f))
-            
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)),
-                shape = RoundedCornerShape(16.dp)
-            ) {
-                Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Info, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Text("Select a layout and start capturing for printing.", style = MaterialTheme.typography.bodySmall)
+                    Text("Printing Capabilities", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+                    LayoutItem(Icons.Default.Grid4x4, "Standard Layout", "4 passport photos (3.5x4.5)")
+                    LayoutItem(Icons.Default.GridView, "Economy Layout", "8 passport photos (Full sheet)")
+                    LayoutItem(Icons.Default.Filter2, "Mixed Layout", "2 types, 4 copies each (4x6)")
                 }
             }
         }
     }
 }
+
 
 @Composable
 fun LayoutItem(icon: androidx.compose.ui.graphics.vector.ImageVector, title: String, desc: String) {
@@ -295,7 +353,7 @@ fun CameraScreen(
         Column(
             modifier = Modifier
                 .align(Alignment.CenterEnd)
-                .padding(end = 24.dp, bottom = 120.dp),
+                .padding(end = 24.dp, bottom = 180.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
