@@ -34,7 +34,7 @@ class PassportViewModel : ViewModel() {
                 val imageParts = uris.mapIndexed { index, uri ->
                     val file = uriToFile(context, uri, "upload_image_$index.jpg")
                     val requestFile = file.asRequestBody("image/*".toMediaTypeOrNull())
-                    MultipartBody.Part.createFormData("images", file.name, requestFile)
+                    MultipartBody.Part.createFormData("image", file.name, requestFile)
                 }
                 
                 val layoutBody = layout.toRequestBody("text/plain".toMediaTypeOrNull())

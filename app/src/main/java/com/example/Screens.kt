@@ -155,10 +155,10 @@ fun HomeScreen(
                 color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
             ) {
                 Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    Text("Popular Layouts", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-                    LayoutItem(Icons.Default.Grid4x4, "4 Photos (Standard)", "Perfect for 3.5x4.5cm")
-                    LayoutItem(Icons.Default.GridView, "8 Photos (Economy)", "8 copies in one sheet")
-                    LayoutItem(Icons.Default.Filter2, "2 Photos (8 Copies)", "4 copies each (4x6 Landscape)")
+                    Text("Printing Tips", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                    LayoutItem(Icons.Default.Lightbulb, "Good Lighting", "Ensure face is evenly lit")
+                    LayoutItem(Icons.Default.Straighten, "Alignment", "Keep eyes within the guide")
+                    LayoutItem(Icons.Default.Print, "Ready to Print", "Layouts are chosen after capture")
                 }
             }
         }
@@ -244,10 +244,10 @@ fun MerchantPortalScreen(
                 color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
             ) {
                 Column(modifier = Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
-                    Text("Printing Capabilities", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
-                    LayoutItem(Icons.Default.Grid4x4, "Standard Layout", "4 passport photos (3.5x4.5)")
-                    LayoutItem(Icons.Default.GridView, "Economy Layout", "8 passport photos (Full sheet)")
-                    LayoutItem(Icons.Default.Filter2, "Mixed Layout", "2 types, 4 copies each (4x6)")
+                    Text("System Utilities", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+                    LayoutItem(Icons.Default.FileDownload, "Download Manual", "Installation guide (PDF)")
+                    LayoutItem(Icons.Default.InstallDesktop, "Desktop Agent", "Print listener (Windows .exe)")
+                    LayoutItem(Icons.Default.CloudSync, "Sync Status", "Connected to Render Cloud")
                 }
             }
         }
@@ -353,7 +353,7 @@ fun CameraScreen(
         Column(
             modifier = Modifier
                 .align(Alignment.CenterEnd)
-                .padding(end = 24.dp, bottom = 180.dp),
+                .padding(end = 24.dp, bottom = 220.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
