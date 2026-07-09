@@ -276,6 +276,7 @@
                     <div class="lang-switcher">
                         <button class="lang-btn active" onclick="setLang('English')">English</button>
                         <button class="lang-btn" onclick="setLang('Hindi')">हिन्दी</button>
+                        <button class="lang-btn" onclick="setLang('Marathi')">मराठी</button>
                     </div>
                 </div>
 
@@ -337,7 +338,9 @@
 
         function updateLangUI(lang) {
             document.querySelectorAll('.lang-btn').forEach(btn => {
-                if (btn.innerText.includes(lang) || (lang === 'Hindi' && btn.innerText.includes('हिन्दी'))) {
+                if (btn.innerText.includes(lang) || 
+                   (lang === 'Hindi' && btn.innerText.includes('हिन्दी')) ||
+                   (lang === 'Marathi' && btn.innerText.includes('मराठी'))) {
                     btn.classList.add('active');
                 } else {
                     btn.classList.remove('active');
@@ -392,7 +395,10 @@
             updateLangUI(lang);
             saveSettings();
             if (shouldSpeak) {
-                speak(lang === 'Hindi' ? "भाषा बदल दी गई है" : "Language changed to English");
+                let msg = "Language changed to English";
+                if (lang === 'Hindi') msg = "भाषा बदल दी गई है";
+                if (lang === 'Marathi') msg = "भाषा बदलली आहे";
+                speak(msg);
             }
         }
 
@@ -411,8 +417,14 @@
                 if (text.includes("processing")) message = "नया फोटो प्रोसेसिंग हो रहा है";
                 if (text.includes("ready")) message = "प्रिंट तैयार है";
             }
+            if (voiceLanguage === 'Marathi') {
+                if (text.includes("processing")) message = "नवीन फोटो प्रोसेस होत आहे";
+                if (text.includes("ready")) message = "प्रिंट तयार आहे";
+            }
             const utterance = new SpeechSynthesisUtterance(message);
-            utterance.lang = voiceLanguage === 'Hindi' ? 'hi-IN' : 'en-US';
+            if (voiceLanguage === 'Hindi') utterance.lang = 'hi-IN';
+            else if (voiceLanguage === 'Marathi') utterance.lang = 'mr-IN';
+            else utterance.lang = 'en-US';
             window.speechSynthesis.speak(utterance);
         }
 

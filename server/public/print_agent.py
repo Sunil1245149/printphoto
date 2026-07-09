@@ -6,8 +6,11 @@ import subprocess
 import time
 
 # Configuration
-SERVER_URL = "https://ais-pre-cqh5itcyojkioxx6udfd4o-1072374194741.asia-southeast1.run.app" # Update with your Render URL
+SERVER_URL = input("Enter Portal URL (default: https://printphoto.onrender.com): ") or "https://printphoto.onrender.com"
 DOWNLOAD_DIR = "downloads"
+
+if SERVER_URL.endswith('/'):
+    SERVER_URL = SERVER_URL[:-1]
 
 if not os.path.exists(DOWNLOAD_DIR):
     os.makedirs(DOWNLOAD_DIR)

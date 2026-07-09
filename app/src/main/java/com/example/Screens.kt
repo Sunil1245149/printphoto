@@ -608,28 +608,45 @@ fun LanguageSelector(
 ) {
     val languages = listOf("English", "Hindi", "Marathi")
     
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text("Voice Language", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Spacer(modifier = Modifier.height(8.dp))
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Text(
+            text = "Voice Assistant Language",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontWeight = FontWeight.Bold
+        )
+        Spacer(modifier = Modifier.height(12.dp))
         Row(
             modifier = Modifier
-                .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(24.dp))
-                .padding(4.dp),
+                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), RoundedCornerShape(24.dp))
+                .padding(4.dp)
+                .fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             languages.forEach { lang ->
                 val isSelected = selectedLanguage == lang
                 Surface(
                     onClick = { onLanguageChange(lang) },
+                    modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(20.dp),
                     color = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent,
-                    contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                    contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    tonalElevation = if (isSelected) 4.dp else 0.dp
                 ) {
-                    Text(
-                        text = lang,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold)
-                    )
+                    Box(
+                        modifier = Modifier.padding(vertical = 10.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = if (lang == "Hindi") "हिन्दी" else if (lang == "Marathi") "मराठी" else "English",
+                            style = MaterialTheme.typography.labelLarge.copy(
+                                fontWeight = if (isSelected) FontWeight.ExtraBold else FontWeight.Medium
+                            )
+                        )
+                    }
                 }
             }
         }

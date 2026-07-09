@@ -58,11 +58,10 @@ fun MainNavigation(voiceManager: VoiceManager) {
 
     LaunchedEffect(selectedLanguage) {
         voiceManager.setLanguage(selectedLanguage)
-        if (selectedLanguage == "Hindi") {
-            voiceManager.speak("Language changed to Hindi", "भाषा हिंदी में बदल दी गई है", "")
-        } else {
-            voiceManager.speak("Language changed to English", "भाषा अंग्रेजी में बदल दी गई है", "")
-        }
+        val msgEng = "Language changed to $selectedLanguage"
+        val msgHi = "भाषा $selectedLanguage में बदल दी गई है"
+        val msgMr = "भाषा $selectedLanguage मध्ये बदलली आहे"
+        voiceManager.speak(msgEng, msgHi, msgMr)
     }
 
     val permissionLauncher = rememberLauncherForActivityResult(
