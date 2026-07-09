@@ -256,17 +256,23 @@
                 <button class="action-button primary" onclick="document.getElementById('manualUpload').click()">
                     <i class="fas fa-cloud-upload-alt"></i> Manual Print Upload
                 </button>
-                <a href="#" class="action-button">
-                    <i class="fas fa-desktop"></i> Download Desktop Agent
-                </a>
-                <a href="#" class="action-button">
-                    <i class="fas fa-file-pdf"></i> User Manual (Hindi/Eng)
-                </a>
+                <div class="card">
+                    <h3><i class="fas fa-desktop"></i> Auto-Print Setup</h3>
+                    <p style="font-size: 13px; color: var(--text-light);">Run this command on your Windows/Linux PC to enable automatic printing.</p>
+                    <code style="display: block; background: #1e293b; color: #f1f5f9; padding: 12px; border-radius: 8px; font-size: 12px; margin-bottom: 12px;">
+                        python print_agent.py
+                    </code>
+                    <a href="/print_agent.py" download class="action-button">
+                        <i class="fas fa-download"></i> Download print_agent.py
+                    </a>
+                </div>
 
-                <h3 style="margin-top: 32px;"><i class="fas fa-language"></i> Portal Language</h3>
-                <div class="lang-switcher">
-                    <button class="lang-btn active">English</button>
-                    <button class="lang-btn">हिन्दी</button>
+                <div class="card">
+                    <h3><i class="fas fa-language"></i> Voice Language</h3>
+                    <div class="lang-switcher">
+                        <button class="lang-btn active" onclick="setLang('English')">English</button>
+                        <button class="lang-btn" onclick="setLang('Hindi')">हिन्दी</button>
+                    </div>
                 </div>
 
                 <h3 style="margin-top: 32px;"><i class="fas fa-cog"></i> Settings</h3>
@@ -317,7 +323,9 @@
 
         socket.on('initial-data', (data) => {
             voiceEnabled = data.settings.voiceEnabled;
+            voiceLanguage = data.settings.voiceLanguage || 'English';
             voiceToggle.checked = voiceEnabled;
+            setLang(voiceLanguage);
             data.history.forEach(addJobToHistory);
             if (data.history.length > 0) updatePreview(data.history[0]);
         });
@@ -369,9 +377,34 @@
             });
         };
 
+        let voiceLanguage = 'English';
+
+        function setLang(lang) {
+            voiceLanguage = lang;
+            document.querySelectorAll('.lang-btn').forEach(btn => {
+                if (btn.innerText.includes(lang) || (lang === 'Hindi' && btn.innerText.includes('हिन्दी'))) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+            fetch('/settings', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ voiceLanguage: lang, voiceEnabled })
+            });
+        }
+
         function speak(text) {
-            const msg = new SpeechSynthesisUtterance(text);
-            window.speechSynthesis.speak(msg);
+            if (!voiceEnabled) return;
+            let message = text;
+            if (voiceLanguage === 'Hindi') {
+                if (text.includes("processing")) message = "नया फोटो प्रोसेसिंग हो रहा है";
+                if (text.includes("ready")) message = "प्रिंट तैयार है";
+            }
+            const utterance = new SpeechSynthesisUtterance(message);
+            utterance.lang = voiceLanguage === 'Hindi' ? 'hi-IN' : 'en-US';
+            window.speechSynthesis.speak(utterance);
         }
 
         function createJobElement(job) {

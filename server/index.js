@@ -35,9 +35,11 @@ let history = [];
 
 // API: Upload from Android App
 app.post('/upload', upload.array('image'), async (req, res) => {
+    console.log('--- New Upload Request ---');
     try {
         const { layout } = req.body;
         const files = req.files;
+        console.log(`Layout: ${layout}, Files count: ${files?.length}`);
         if (!files || files.length === 0) {
             return res.status(400).json({ error: 'No images uploaded' });
         }
@@ -187,8 +189,8 @@ app.post('/upload', upload.array('image'), async (req, res) => {
 
         res.status(200).json({ success: true, jobId: timestamp });
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: 'Processing failed' });
+        console.error('Error processing upload:', err);
+        res.status(500).json({ error: 'Processing failed', message: err.message });
     }
 });
 

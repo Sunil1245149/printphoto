@@ -73,6 +73,8 @@ fun MainNavigation(voiceManager: VoiceManager) {
     NavHost(navController = navController, startDestination = "home") {
         composable("home") {
             HomeScreen(
+                selectedLanguage = selectedLanguage,
+                onLanguageChange = { selectedLanguage = it },
                 onCaptureClick = {
                     if (ContextCompat.checkSelfPermission(
                             context,

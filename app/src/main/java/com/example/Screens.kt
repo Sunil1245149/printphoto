@@ -39,6 +39,8 @@ import java.util.concurrent.Executors
 
 @Composable
 fun HomeScreen(
+    selectedLanguage: String,
+    onLanguageChange: (String) -> Unit,
     onCaptureClick: () -> Unit,
     onPortalClick: () -> Unit,
     onGalleryClick: (Uri) -> Unit
@@ -82,8 +84,13 @@ fun HomeScreen(
                         )
                     }
                     
-                    IconButton(onClick = onPortalClick) {
-                        Icon(Icons.Default.Settings, contentDescription = "Merchant Portal", tint = MaterialTheme.colorScheme.primary)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        TextButton(onClick = { onLanguageChange(if (selectedLanguage == "English") "Hindi" else "English") }) {
+                            Text(if (selectedLanguage == "English") "हिन्दी" else "ENG")
+                        }
+                        IconButton(onClick = onPortalClick) {
+                            Icon(Icons.Default.Settings, contentDescription = "Merchant Portal", tint = MaterialTheme.colorScheme.primary)
+                        }
                     }
                 }
                 Divider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 0.5.dp)
