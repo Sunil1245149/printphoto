@@ -32,10 +32,14 @@ class PassportViewModel : ViewModel() {
         .writeTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
         .build()
 
+    private val moshi = com.squareup.moshi.Moshi.Builder()
+        .add(com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory())
+        .build()
+
     private val retrofit = Retrofit.Builder()
         .baseUrl(Constants.BACKEND_URL)
         .client(client)
-        .addConverterFactory(MoshiConverterFactory.create())
+        .addConverterFactory(MoshiConverterFactory.create(moshi))
         .build()
 
     private val apiService = retrofit.create(PassportApiService::class.java)
@@ -67,7 +71,13 @@ class PassportViewModel : ViewModel() {
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
-                _uiState.value = UiState.Error("Network Error: ${e.javaClass.simpleName}: ${e.message}")
+                val message = when (e) {
+                    is java.net.UnknownHostException -> "Unknown Host: URL invalid or no Internet"
+                    is java.net.ConnectException -> "Connection Refused: Server down or URL wrong"
+                    is java.net.SocketTimeoutException -> "Timeout: Check connection speed"
+                    else -> "${e.javaClass.simpleName}: ${e.message}"
+                }
+                _uiState.value = UiState.Error("Network Error: $message")
             }
         }
     }

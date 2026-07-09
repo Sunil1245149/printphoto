@@ -206,6 +206,12 @@ app.post('/upload', upload.any(), async (req, res) => {
     }
 });
 
+// Global error handler
+app.use((err, req, res, next) => {
+    console.error('GLOBAL ERROR:', err);
+    res.status(500).json({ error: 'Internal Server Error', details: err.message });
+});
+
 function triggerAutoPrint(filePath) {
     console.log(`ALREADY IMPLEMENTED: Sending ${filePath} to printing system...`);
     // This is where your existing auto-print logic would be triggered.
