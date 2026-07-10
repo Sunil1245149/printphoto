@@ -36,7 +36,15 @@ let history = [];
 // API: Upload from Android App
 app.get('/ping', (req, res) => res.send('pong'));
 
-app.post('/upload', upload.any(), async (req, res) => {
+app.post('/upload', (req, res, next) => {
+    upload.any()(req, res, (err) => {
+        if (err) {
+            console.error('MULTER ERROR:', err);
+            return res.status(400).json({ success: false, error: 'Upload failed', details: err.message });
+        }
+        next();
+    });
+}, async (req, res) => {
     console.log('--- New Upload Request ---');
     console.log('Timestamp:', new Date().toISOString());
     console.log('Headers:', JSON.stringify(req.headers, null, 2));
@@ -60,7 +68,7 @@ app.post('/upload', upload.any(), async (req, res) => {
         
         if (files.length === 0) {
             console.log('No files with fieldname "image" found');
-            return res.status(400).json({ error: 'No images uploaded with key "image"' });
+            return res.status(400).json({ success: false, error: 'No images uploaded with key "image"' });
         }
 
         const timestamp = Date.now();
@@ -77,6 +85,7 @@ app.post('/upload', upload.any(), async (req, res) => {
 
         // Helper to process a single photo with border and gap
         const processPhoto = async (filePath) => {
+            console.log(`Processing file: ${filePath}`);
             try {
                 const photo = await sharp(filePath)
                     .resize(pWidth, pHeight, { fit: 'cover' })
@@ -86,6 +95,8 @@ app.post('/upload', upload.any(), async (req, res) => {
                         background: { r: 0, g: 0, b: 0, alpha: 1 }
                     })
                     .toBuffer();
+                
+                console.log(`Photo resized and bordered for ${filePath}`);
 
                 const w = pWidth + (borderSize + gapSize) * 2;
                 const h = pHeight + (borderSize + gapSize) * 2;
