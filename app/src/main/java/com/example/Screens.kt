@@ -150,20 +150,20 @@ fun HomeScreen(
 
             DashboardCard(
                 title = "Passport Capture",
-                subtitle = "Standard 3.5x4.5cm photos",
+                subtitle = "Take new photo",
                 icon = Icons.Default.CameraAlt,
                 color = MaterialTheme.colorScheme.primaryContainer,
                 onClick = onCaptureClick,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth().height(80.dp)
             )
             
             DashboardCard(
-                title = "Print from Files",
-                subtitle = "Use your existing photos",
+                title = "Upload Photo",
+                subtitle = "Use gallery",
                 icon = Icons.Default.PhotoLibrary,
                 color = MaterialTheme.colorScheme.secondaryContainer,
                 onClick = { launcher.launch("image/*") },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth().height(80.dp)
             )
 
             TextButton(onClick = onPingClick) {
@@ -284,19 +284,24 @@ fun CameraScreen(
             }
         }
 
-        // Zoom Slider (Above Capture Button)
+        // Zoom Control (Slider above capture button)
         Column(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(bottom = 150.dp, start = 48.dp, end = 48.dp),
+                .padding(bottom = 140.dp, start = 60.dp, end = 60.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(
-                text = "Zoom: ${"%.1f".format(zoomRatio)}x",
-                color = Color.White,
-                style = MaterialTheme.typography.labelSmall,
-                modifier = Modifier.background(Color.Black.copy(0.4f), RoundedCornerShape(4.dp)).padding(horizontal = 8.dp)
-            )
+            Box(
+                modifier = Modifier
+                    .background(Color.Black.copy(0.4f), RoundedCornerShape(4.dp))
+                    .padding(horizontal = 8.dp, vertical = 2.dp)
+            ) {
+                Text(
+                    text = "Zoom: ${"%.1f".format(zoomRatio)}x",
+                    color = Color.White,
+                    style = MaterialTheme.typography.labelSmall
+                )
+            }
             Slider(
                 value = zoomRatio,
                 onValueChange = {
@@ -572,25 +577,25 @@ fun DashboardCard(
 ) {
     Surface(
         onClick = onClick,
-        modifier = modifier.height(90.dp),
+        modifier = modifier,
         shape = RoundedCornerShape(16.dp),
         color = color
     ) {
         Row(
-            modifier = Modifier.padding(12.dp),
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Box(
                 modifier = Modifier
-                    .size(32.dp)
+                    .size(36.dp)
                     .background(Color.White.copy(alpha = 0.5f), CircleShape),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(icon, contentDescription = null, tint = Color.Black.copy(alpha = 0.7f), modifier = Modifier.size(16.dp))
+                Icon(icon, contentDescription = null, tint = Color.Black.copy(alpha = 0.7f), modifier = Modifier.size(18.dp))
             }
             Column {
-                Text(title, fontWeight = FontWeight.Bold, color = Color.Black, style = MaterialTheme.typography.bodyMedium)
+                Text(title, fontWeight = FontWeight.ExtraBold, color = Color.Black, style = MaterialTheme.typography.titleMedium)
                 Text(subtitle, style = MaterialTheme.typography.labelSmall, color = Color.Black.copy(alpha = 0.6f))
             }
         }

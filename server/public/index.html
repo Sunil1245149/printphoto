@@ -233,32 +233,37 @@
         #manualUpload { display: none; }
 
         @media print {
-            body * {
-                visibility: hidden;
+            body {
+                background: white !important;
+                margin: 0 !important;
+                padding: 0 !important;
             }
-            #preview-area, #preview-area * {
-                visibility: visible;
+            .container, header, .card:not(.preview-card), .card h3, #job-details {
+                display: none !important;
             }
-            #preview-area {
-                position: absolute;
-                left: 0;
-                top: 0;
-                width: 100%;
-                margin: 0;
-                padding: 0;
+            .main-grid {
+                display: block !important;
+                padding: 0 !important;
+                margin: 0 !important;
+            }
+            .preview-container, .preview-card {
+                position: absolute !important;
+                left: 0 !important;
+                top: 0 !important;
+                width: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                box-shadow: none !important;
+                border: none !important;
             }
             #live-preview {
                 width: 100% !important;
+                max-width: 100% !important;
                 height: auto !important;
                 box-shadow: none !important;
                 border-radius: 0 !important;
-            }
-            .container, .card, .main-grid {
-                padding: 0 !important;
                 margin: 0 !important;
-                box-shadow: none !important;
-                border: none !important;
-                background: none !important;
+                padding: 0 !important;
             }
         }
     </style>
@@ -326,7 +331,7 @@
 
             <!-- Preview -->
             <div class="preview-container">
-                <div class="card">
+                <div class="card preview-card">
                     <h3><i class="fas fa-eye"></i> Layout Preview</h3>
                     <div id="preview-area">
                         <div class="empty-preview">

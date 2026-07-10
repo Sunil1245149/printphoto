@@ -25,14 +25,20 @@ def connect():
 def disconnect():
     print("Disconnected from Server")
 
-@sio.on('job-completed')
-def on_job_completed(data):
-    print(f"New job completed: {data['id']}")
-    image_url = f"{SERVER_URL}{data['preview']}"
-    file_path = os.path.join(DOWNLOAD_DIR, f"print_{data['id']}.png")
+@sio.on('print_job')
+def on_print_job(data):
+    url = data.get('url')
+    if not url: return
     
-    # Download the image
-    print(f"Downloading {image_url}...")
+    # Check if absolute or relative
+    if url.startswith('/'):
+        image_url = f"{SERVER_URL}{url}"
+    else:
+        image_url = url
+        
+    print(f"New print job: {image_url}")
+    file_path = os.path.join(DOWNLOAD_DIR, f"auto_print_{int(time.time())}.png")
+    
     try:
         response = requests.get(image_url)
         if response.status_code == 200:
@@ -40,8 +46,6 @@ def on_job_completed(data):
                 f.write(response.content)
             print(f"Saved to {file_path}")
             
-            # Auto Print (Windows command example)
-            # You might need to install 'Ghostscript' or use 'mspaint /p'
             print(f"Sending {file_path} to printer...")
             if os.name == 'nt': # Windows
                 os.startfile(file_path, "print")
@@ -51,6 +55,11 @@ def on_job_completed(data):
             print(f"Failed to download image: {response.status_code}")
     except Exception as e:
         print(f"Error during printing: {e}")
+
+@sio.on('job-completed')
+def on_job_completed(data):
+    print(f"Job completed notification: {data['id']}")
+    # Optional: we can trigger print here too if desired, but 'print_job' is more direct
 
 def start_agent():
     while True:

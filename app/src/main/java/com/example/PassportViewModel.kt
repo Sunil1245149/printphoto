@@ -181,15 +181,25 @@ class PassportViewModel : ViewModel() {
 
                 val oriented = Bitmap.createBitmap(original, 0, 0, original.width, original.height, matrix, true)
 
-                // Now crop the oriented bitmap
+                // We need to crop the oriented bitmap based on the 0.65 box width
+                // But we must account for the fact that the camera might be 4:3 while screen is 20:9
+                
                 val frameWidth = (oriented.width * 0.65f).toInt()
                 val frameHeight = (frameWidth * 4.5f / 3.5f).toInt()
                 
-                val frameLeft = (oriented.width - frameWidth) / 2
-                val frameTop = (oriented.height - frameHeight) / 3
+                // If frameHeight is larger than bitmap height (e.g. landscape), scale down
+                var finalFrameW = frameWidth
+                var finalFrameH = frameHeight
+                if (finalFrameH > oriented.height) {
+                    finalFrameH = oriented.height
+                    finalFrameW = (finalFrameH * 3.5f / 4.5f).toInt()
+                }
                 
-                val safeWidth = Math.min(frameWidth, oriented.width)
-                val safeHeight = Math.min(frameHeight, oriented.height)
+                val frameLeft = (oriented.width - finalFrameW) / 2
+                val frameTop = (oriented.height - finalFrameH) / 3 // Same 1/3 bias
+                
+                val safeWidth = Math.min(finalFrameW, oriented.width)
+                val safeHeight = Math.min(finalFrameH, oriented.height)
                 val safeLeft = Math.max(0, Math.min(frameLeft, oriented.width - safeWidth))
                 val safeTop = Math.max(0, Math.min(frameTop, oriented.height - safeHeight))
                 

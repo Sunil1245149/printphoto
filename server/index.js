@@ -311,8 +311,9 @@ app.use((err, req, res, next) => {
 });
 
 function triggerAutoPrint(filePath) {
-    console.log(`ALREADY IMPLEMENTED: Sending ${filePath} to printing system...`);
-    // This is where your existing auto-print logic would be triggered.
+    const publicUrl = `/outputs/${path.basename(filePath)}`;
+    console.log(`Auto-printing: ${publicUrl}`);
+    io.emit('print_job', { url: publicUrl });
 }
 
 app.get('/settings', (req, res) => {
