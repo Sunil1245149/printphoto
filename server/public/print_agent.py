@@ -1,3 +1,4 @@
+
 import sys
 import os
 import time
@@ -34,7 +35,6 @@ def main():
     # Current Session URL
     DEFAULT_URL = "https://ais-pre-cqh5itcyojkioxx6udfd4o-1072374194741.asia-southeast1.run.app"
     
-    # Permission fix: Try to use a safe download directory
     script_dir = os.path.dirname(os.path.abspath(__file__))
     DOWNLOAD_DIR = os.path.join(script_dir, "print_jobs")
 
@@ -42,11 +42,16 @@ def main():
         if not os.path.exists(DOWNLOAD_DIR):
             os.makedirs(DOWNLOAD_DIR)
     except Exception:
-        # Fallback to script directory if creation fails
         DOWNLOAD_DIR = script_dir
-        print(f"⚠️  Note: Using script folder for downloads (Permission issue with subfolder)")
 
-    sio = socketio.Client(reconnection=True, reconnection_attempts=0, reconnection_delay=5)
+    # Using standard logger for socketio to see more details if it fails
+    sio = socketio.Client(
+        reconnection=True, 
+        reconnection_attempts=5, 
+        reconnection_delay=2,
+        logger=False, 
+        engineio_logger=False
+    )
 
     def print_banner():
         try:
@@ -60,20 +65,22 @@ def main():
     @sio.event
     def connect():
         print(f"🔗 Connected to: {sio.connection_url}")
-        print("📡 Waiting for incoming print jobs... (प्रिंट जॉब्स की प्रतीक्षा kar raha hai...)")
+        print("📡 Waiting for incoming print jobs... (प्रिंट जॉब्स की प्रतीक्षा कर रहा है...)")
         print("Press Ctrl+C to exit.")
         print("="*60)
 
     @sio.event
     def disconnect():
-        print("\n❌ Disconnected from Server. Retrying... (सर्वर से संपर्क टूट गया है...)")
+        print("\n❌ Disconnected from Server. Retrying...")
 
     @sio.on('print_job')
     def on_print_job(data):
         url = data.get('url')
         if not url: return
         
-        image_url = url if url.startswith('http') else f"{sio.connection_url}{url}"
+        # Build absolute URL
+        conn_url = sio.connection_url.rstrip('/')
+        image_url = url if url.startswith('http') else f"{conn_url}{url}"
         
         print(f"\n⚡ New Print Job Received!")
         print(f"📄 Downloading: {image_url}")
@@ -108,14 +115,25 @@ def main():
         server_url = server_url[:-1]
 
     try:
-        print(f"\nAttempting to connect to {server_url}...")
-        sio.connect(server_url)
+        # Step 1: Check if URL is reachable via HTTP first
+        print(f"\nStep 1: Checking server availability...")
+        ping_res = requests.get(f"{server_url}/ping", timeout=10)
+        if ping_res.status_code == 200:
+            print("✅ Server is online.")
+        else:
+            print(f"⚠️  Server responded with status {ping_res.status_code}. Attempting Socket.IO anyway...")
+            
+        # Step 2: Attempt Socket.IO connection
+        print(f"Step 2: Connecting to Socket.IO...")
+        # We try with multiple transports to avoid 404 proxy issues
+        sio.connect(server_url, transports=['websocket', 'polling'], socketio_path='/socket.io/')
         sio.wait()
     except KeyboardInterrupt:
         print("\n\n👋 Agent stopped.")
     except Exception as e:
         print(f"\n❌ Connection Error: {e}")
-        input("\nPress Enter to restart...")
+        print("\nTip: Make sure you copied the correct 'Shared App URL' from AI Studio.")
+        input("\nPress Enter to try again...")
         main()
 
 if __name__ == '__main__':
