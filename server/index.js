@@ -34,6 +34,7 @@ let printQueue = [];
 let history = [];
 
 // API: Upload from Android App
+app.get('/', (req, res) => res.json({ status: 'online', message: 'Passport Print Server' }));
 app.get('/ping', (req, res) => res.send('pong'));
 
 app.post('/upload', (req, res, next) => {
@@ -59,16 +60,21 @@ app.post('/upload', (req, res, next) => {
         
         console.log('Body fields:', Object.keys(req.body || {}));
         console.log('Effective Layout:', layout);
-        console.log('Files count:', req.files?.length);
-        if (req.files) {
-            req.files.forEach(f => console.log(` - File: field=${f.fieldname}, name=${f.originalname}, size=${f.size}`));
-        }
+        
+        // Find all images regardless of fieldname for debugging
+        const allFiles = req.files || [];
+        console.log('Files count:', allFiles.length);
+        allFiles.forEach(f => console.log(` - File: field=${f.fieldname}, name=${f.originalname}, size=${f.size}`));
 
-        const files = req.files?.filter(f => f.fieldname === 'image') || [];
+        const files = allFiles.filter(f => f.fieldname === 'image' || f.fieldname === 'images' || f.fieldname === 'photo');
         
         if (files.length === 0) {
-            console.log('No files with fieldname "image" found');
-            return res.status(400).json({ success: false, error: 'No images uploaded with key "image"' });
+            console.log('No relevant files found. Falling back to all files if any.');
+            if (allFiles.length > 0) {
+                files.push(allFiles[0]);
+            } else {
+                return res.status(400).json({ success: false, error: 'No images uploaded' });
+            }
         }
 
         const timestamp = Date.now();

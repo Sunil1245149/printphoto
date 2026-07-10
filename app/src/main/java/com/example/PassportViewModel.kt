@@ -77,8 +77,10 @@ class PassportViewModel : ViewModel() {
                     is java.net.UnknownHostException -> "Internet problem or wrong URL"
                     is java.net.ConnectException -> "Cannot connect to server"
                     is java.net.SocketTimeoutException -> "Server taking too long"
-                    is com.squareup.moshi.JsonEncodingException, is com.squareup.moshi.JsonDataException -> 
-                        "Server returned invalid data (likely HTML error page)"
+                    is com.squareup.moshi.JsonEncodingException, is com.squareup.moshi.JsonDataException -> {
+                        // This usually means we got HTML instead of JSON
+                        "Server returned invalid data. Check URL or Server Logs."
+                    }
                     else -> "${e.javaClass.simpleName}: ${e.message}"
                 }
                 _uiState.value = UiState.Error("Network Error: $message")
