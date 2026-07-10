@@ -31,6 +31,12 @@ class PassportViewModel : ViewModel() {
     
     private val client = okhttp3.OkHttpClient.Builder()
         .addInterceptor(logging)
+        .addInterceptor { chain ->
+            val request = chain.request().newBuilder()
+                .header("User-Agent", "PassportPrintApp/1.1")
+                .build()
+            chain.proceed(request)
+        }
         .connectTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
         .readTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
         .writeTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
@@ -58,21 +64,11 @@ class PassportViewModel : ViewModel() {
                     if (!file.exists() || file.length() == 0L) {
                         throw Exception("Failed to prepare image for upload: ${file.name}")
                     }
-                    
-                    // Check if file is HTML/XML
-                    val firstBytes = ByteArray(50)
-                    file.inputStream().use { it.read(firstBytes) }
-                    val contentStart = firstBytes.toString(Charsets.UTF_8).lowercase()
-                    if (contentStart.contains("<!doc") || contentStart.contains("<html") || contentStart.contains("<?xml")) {
-                        throw Exception("Image data is invalid (HTML/XML detected). Please try picking another photo.")
-                    }
-
                     val requestFile = file.asRequestBody("image/jpeg".toMediaTypeOrNull())
-                    MultipartBody.Part.createFormData("images", file.name, requestFile)
+                    MultipartBody.Part.createFormData("image", file.name, requestFile)
                 }
                 
                 val layoutBody = layout.toRequestBody("text/plain".toMediaTypeOrNull())
-
                 val response = apiService.uploadPhoto(imageParts, layoutBody)
                 val responseCode = response.code()
                 val rawBody = if (response.isSuccessful) response.body()?.string() else response.errorBody()?.string()
@@ -89,25 +85,21 @@ class PassportViewModel : ViewModel() {
                                 _uiState.value = UiState.Error("Server: $errorMsg")
                             }
                         } catch (e: Exception) {
-                            val snippet = if (rawBody.length > 200) rawBody.substring(0, 200) + "..." else rawBody
-                            _uiState.value = UiState.Error("JSON Parse Error. Server sent: $snippet")
+                            _uiState.value = UiState.Error("JSON Parse Error: ${e.message}")
                         }
                     } else {
                         val snippet = if ((rawBody?.length ?: 0) > 200) rawBody?.substring(0, 200) + "..." else rawBody
-                        _uiState.value = UiState.Error("Server Error ($responseCode): ${snippet ?: "No details"}")
+                        if (snippet?.lowercase()?.contains("<!doctype") == true) {
+                            _uiState.value = UiState.Error("Server Error ($responseCode): Received an error page. Check BACKEND_URL.")
+                        } else {
+                            _uiState.value = UiState.Error("Server Error ($responseCode): ${snippet ?: "No details"}")
+                        }
                     }
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
-                val message = when {
-                    e is java.net.UnknownHostException -> "Internet problem or wrong URL"
-                    e is java.net.ConnectException -> "Cannot connect to server"
-                    e is java.net.SocketTimeoutException -> "Server taking too long (Timeout)"
-                    e.message?.contains("Json") == true -> "Server returned malformed data (likely HTML error page)"
-                    else -> "${e.javaClass.simpleName}: ${e.message}"
-                }
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                    _uiState.value = UiState.Error("Network Error: $message")
+                    _uiState.value = UiState.Error("App Error: ${e.message}")
                 }
             }
         }
@@ -142,39 +134,51 @@ class PassportViewModel : ViewModel() {
         val file = File(context.cacheDir, fileName)
         try {
             if (file.exists()) file.delete()
-            
             var bitmap: Bitmap? = null
-            try {
-                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
-                    val source = android.graphics.ImageDecoder.createSource(context.contentResolver, uri)
-                    bitmap = android.graphics.ImageDecoder.decodeBitmap(source) { decoder, _, _ ->
-                        decoder.allocator = android.graphics.ImageDecoder.ALLOCATOR_SOFTWARE
-                    }
-                }
-            } catch (e: Exception) { e.printStackTrace() }
+            
+            // Try to decode with a limit on size to avoid OOM
+            val options = BitmapFactory.Options().apply {
+                inJustDecodeBounds = true
+            }
+            context.contentResolver.openInputStream(uri)?.use { input ->
+                BitmapFactory.decodeStream(input, null, options)
+            }
 
-            val finalBitmap = bitmap ?: run {
-                val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-                context.contentResolver.openInputStream(uri)?.use { input ->
-                    BitmapFactory.decodeStream(input, null, options)
-                }
-                val sampleSize = calculateInSampleSize(options, 2048, 2048)
-                val decodeOptions = BitmapFactory.Options().apply {
-                    inSampleSize = sampleSize
-                    inPreferredConfig = Bitmap.Config.ARGB_8888
-                }
-                context.contentResolver.openInputStream(uri)?.use { input ->
-                    BitmapFactory.decodeStream(input, null, decodeOptions)
+            val maxDim = 1024
+            var sampleSize = 1
+            if (options.outWidth > maxDim || options.outHeight > maxDim) {
+                val halfWidth = options.outWidth / 2
+                val halfHeight = options.outHeight / 2
+                while (halfWidth / sampleSize >= maxDim && halfHeight / sampleSize >= maxDim) {
+                    sampleSize *= 2
                 }
             }
 
-            if (finalBitmap != null) {
+            val decodeOptions = BitmapFactory.Options().apply {
+                inSampleSize = sampleSize
+                inPreferredConfig = Bitmap.Config.ARGB_8888
+            }
+
+            try {
+                context.contentResolver.openInputStream(uri)?.use { input ->
+                    bitmap = BitmapFactory.decodeStream(input, null, decodeOptions)
+                }
+            } catch (e: OutOfMemoryError) {
+                // Try with even smaller size
+                decodeOptions.inSampleSize *= 2
+                context.contentResolver.openInputStream(uri)?.use { input ->
+                    bitmap = BitmapFactory.decodeStream(input, null, decodeOptions)
+                }
+            }
+
+            if (bitmap != null) {
                 FileOutputStream(file).use { output ->
-                    finalBitmap.compress(Bitmap.CompressFormat.JPEG, 80, output)
+                    bitmap!!.compress(Bitmap.CompressFormat.JPEG, 85, output)
                     output.flush()
                 }
-                finalBitmap.recycle()
+                bitmap?.recycle()
             } else {
+                // Raw copy as last resort
                 context.contentResolver.openInputStream(uri)?.use { input ->
                     FileOutputStream(file).use { output ->
                         input.copyTo(output)
@@ -182,14 +186,13 @@ class PassportViewModel : ViewModel() {
                 }
             }
         } catch (e: Exception) {
-            e.printStackTrace()
             try {
                 context.contentResolver.openInputStream(uri)?.use { input ->
                     FileOutputStream(file).use { output ->
                         input.copyTo(output)
                     }
                 }
-            } catch (e2: Exception) { e2.printStackTrace() }
+            } catch (e2: Exception) { }
         }
         return file
     }

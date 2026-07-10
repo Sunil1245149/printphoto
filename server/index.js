@@ -41,93 +41,80 @@ let history = [];
 app.get('/', (req, res) => res.json({ status: 'online', message: 'Passport Print Server' }));
 app.get('/ping', (req, res) => res.send('pong'));
 
-app.post('/upload', (req, res, next) => {
-    upload.any()(req, res, (err) => {
-        if (err) {
-            console.error('MULTER ERROR:', err);
-            return res.status(400).json({ success: false, error: 'Upload failed', details: err.message });
-        }
-        next();
-    });
-}, async (req, res) => {
-    console.log('--- New Upload Request ---');
-    console.log('Timestamp:', new Date().toISOString());
-    console.log('Headers:', JSON.stringify(req.headers, null, 2));
-    
-    try {
-        let layout = '8';
-        if (req.body && req.body.layout) {
-            layout = req.body.layout;
-            if (Array.isArray(layout)) layout = layout[0];
-            if (typeof layout !== 'string') layout = layout.toString();
-        }
-        
-        console.log('Body fields:', Object.keys(req.body || {}));
-        console.log('Effective Layout:', layout);
-        
-        // Find all images regardless of fieldname for debugging
-        const allFiles = req.files || [];
-        console.log('Files count:', allFiles.length);
-        allFiles.forEach(f => {
-            console.log(` - File: field=${f.fieldname}, name=${f.originalname}, mimetype=${f.mimetype}, size=${f.size}, path=${f.path}`);
+// Support both /upload and /api/upload
+const uploadHandler = [
+    (req, res, next) => {
+        upload.any()(req, res, (err) => {
+            if (err) {
+                console.error('MULTER ERROR:', err);
+                return res.status(400).json({ success: false, error: 'Upload failed', details: err.message });
+            }
+            next();
         });
-
-        const files = allFiles.filter(f => f.fieldname === 'image' || f.fieldname === 'images' || f.fieldname === 'photo');
+    },
+    async (req, res) => {
+        console.log('--- New Upload Request ---');
+        sharp.cache(false);
+        console.log('Timestamp:', new Date().toISOString());
         
-        if (files.length === 0) {
-            console.log('No relevant files found. Falling back to all files if any.');
-            if (allFiles.length > 0) {
-                files.push(allFiles[0]);
-            } else {
+        try {
+            let layout = '8';
+            if (req.body && req.body.layout) {
+                layout = req.body.layout;
+                if (Array.isArray(layout)) layout = layout[0];
+                if (typeof layout !== 'string') layout = layout.toString();
+            }
+            
+            console.log('Effective Layout:', layout);
+            
+            const allFiles = req.files || [];
+            console.log('Files count:', allFiles.length);
+            
+            // Accept any file field
+            const files = allFiles;
+            
+            if (files.length === 0) {
                 return res.status(400).json({ success: false, error: 'No images uploaded' });
             }
-        }
 
-        // Check if files are empty
-        for (const f of files) {
-            if (f.size === 0) {
-                console.error(`File ${f.originalname} is empty!`);
-                return res.status(400).json({ success: false, error: `File ${f.originalname} is empty` });
-            }
-        }
+            const timestamp = Date.now();
+            const outputPath = path.join('outputs', `print_${timestamp}.png`);
+            
+            io.emit('job-received', { id: timestamp, status: 'Processing' });
 
-        const timestamp = Date.now();
-        const outputPath = path.join('outputs', `print_${timestamp}.png`);
-        
-        io.emit('job-received', { id: timestamp, status: 'Processing' });
+            const sheetWidth = 1800; // 6 inch at 300 DPI
+            const sheetHeight = 1200; // 4 inch at 300 DPI
+            const pWidth = 413; // 3.5cm
+            const pHeight = 531; // 4.5cm
+            const borderSize = 2;
+            const gapSize = 10; 
 
-        const sheetWidth = 1800; // 6 inch at 300 DPI
-        const sheetHeight = 1200; // 4 inch at 300 DPI
-        const pWidth = 413; // 3.5cm
-        const pHeight = 531; // 4.5cm
-        const borderSize = 2;
-        const gapSize = 10; 
+            // Helper to process a single photo
+            const processPhoto = async (file) => {
+                const filePath = file.path;
+                console.log(`Processing file: ${filePath} (${file.originalname}, ${file.mimetype}, ${file.size} bytes)`);
+                
+                if (!fs.existsSync(filePath)) {
+                    throw new Error(`File not found on server: ${path.basename(filePath)}`);
+                }
 
-        // Helper to process a single photo with border and gap
-        const processPhoto = async (filePath) => {
-            console.log(`Processing file: ${filePath}`);
-            if (!fs.existsSync(filePath)) {
-                console.error(`File NOT found on disk: ${filePath}`);
-                throw new Error(`File not found on server storage: ${path.basename(filePath)}`);
-            }
+                if (file.size === 0) {
+                    throw new Error(`File ${file.originalname} is empty`);
+                }
 
-            const stats = fs.statSync(filePath);
-            console.log(`File size on disk: ${stats.size} bytes`);
-            if (stats.size === 0) {
-                throw new Error(`File ${path.basename(filePath)} is empty (0 bytes)`);
-            }
+                const buffer = await fs.readFile(filePath);
+                
+                if (buffer.length === 0) {
+                    throw new Error('File buffer is empty');
+                }
 
-            let buffer;
-            try {
-                buffer = await fs.readFile(filePath);
-                const magic = buffer.slice(0, 8).toString('hex');
-                const startOfFile = buffer.slice(0, 100).toString('utf8');
-                console.log(`Read ${buffer.length} bytes into buffer. Magic: ${magic}`);
-                console.log(`Start of file (first 100 bytes): ${startOfFile}`);
+                // Log first few bytes for debugging
+                console.log(`Buffer for ${file.originalname}: ${buffer.slice(0, 20).toString('hex')}`);
 
-                if (buffer.toString('utf8', 0, 15).toLowerCase().includes('<!doctype') || 
-                    buffer.toString('utf8', 0, 15).toLowerCase().includes('<html')) {
-                    throw new Error(`The file uploaded is an HTML page, not an image. This usually means a server error page was captured.`);
+                // Check for HTML/XML
+                const header = buffer.toString('utf8', 0, 100).toLowerCase();
+                if (header.includes('<!doctype') || header.includes('<html') || header.includes('<?xml')) {
+                    throw new Error(`File is HTML/XML (not an image). Possible server redirection or error page.`);
                 }
                 
                 let photo;
@@ -135,42 +122,44 @@ app.post('/upload', (req, res, next) => {
                     // Try sharp first
                     photo = await sharp(buffer)
                         .rotate()
-                        .resize(pWidth, pHeight, { fit: 'cover' })
+                        .resize(pWidth, pHeight, { 
+                            fit: 'cover',
+                            withoutEnlargement: false
+                        })
                         .extend({
                             top: borderSize, bottom: borderSize, left: borderSize, right: borderSize,
                             background: { r: 0, g: 0, b: 0, alpha: 1 }
                         })
+                        .png()
                         .toBuffer();
                 } catch (sharpErr) {
-                    console.error(`Sharp failed for ${filePath}, trying Jimp: ${sharpErr.message}`);
+                    console.error(`Sharp failed for ${file.originalname}: ${sharpErr.message}`);
                     try {
+                        // Jimp as second resort
                         const jimpImage = await Jimp.read(buffer);
-                        const resizedBuffer = await jimpImage
+                        const jimpBuffer = await jimpImage
                             .cover(pWidth, pHeight)
                             .getBufferAsync(Jimp.MIME_PNG);
                         
-                        // Add border using sharp on the jimp result (sharp is more reliable for simple transforms)
-                        photo = await sharp(resizedBuffer)
+                        photo = await sharp(jimpBuffer)
                             .extend({
                                 top: borderSize, bottom: borderSize, left: borderSize, right: borderSize,
                                 background: { r: 0, g: 0, b: 0, alpha: 1 }
                             })
+                            .png()
                             .toBuffer();
                     } catch (jimpErr) {
-                        console.error(`Jimp also failed for ${filePath}: ${jimpErr.message}`);
-                        throw new Error(`Image format not recognized or file is corrupt. Please try a standard JPEG or PNG image.`);
+                        console.error(`Jimp also failed for ${file.originalname}: ${jimpErr.message}`);
+                        throw new Error(`Image format not supported: ${file.originalname}. Please use JPEG or PNG.`);
                     }
                 }
                 
-                console.log(`Photo processed successfully: ${filePath}`);
-
                 const w = pWidth + (borderSize + gapSize) * 2;
                 const h = pHeight + (borderSize + gapSize) * 2;
                 
-                // Create dotted border SVG
                 const svgBorder = Buffer.from(`
                     <svg width="${w}" height="${h}">
-                        <rect x="1" y="1" width="${w-2}" height="${h-2}" fill="none" stroke="#DDDDDD" stroke-width="1" stroke-dasharray="5,5" />
+                        <rect x="1" y="1" width="${w-2}" height="${h-2}" fill="none" stroke="#CCCCCC" stroke-width="1" stroke-dasharray="5,5" />
                     </svg>
                 `);
 
@@ -181,19 +170,28 @@ app.post('/upload', (req, res, next) => {
                     { input: photo, top: gapSize, left: gapSize },
                     { input: svgBorder, top: 0, left: 0 }
                 ])
+                .png()
                 .toBuffer();
-            } catch (e) {
-                console.error('Error in processPhoto details:', e);
-                const magicHex = buffer ? buffer.slice(0, 16).toString('hex') : 'n/a';
-                const fileRecord = (req.files || []).find(f => f.path === filePath) || {};
-                throw new Error(`Processing failed for ${path.basename(filePath)}: ${e.message} (Mimetype: ${fileRecord.mimetype}, Magic: ${magicHex}, Size: ${buffer ? buffer.length : 'n/a'})`);
-            }
-        };
+            };
 
-        const processedPhotos = await Promise.all(files.map(f => processPhoto(f.path)));
-        
-        let compositeArr = [];
-        let finalOutput;
+            const processedPhotos = [];
+            for (const f of files) {
+                try {
+                    const p = await processPhoto(f);
+                    processedPhotos.push(p);
+                } catch (pe) {
+                    console.error('Photo processing failed:', pe);
+                    // Continue with other photos if any, or throw if none
+                }
+            }
+
+            if (processedPhotos.length === 0) {
+                throw new Error('All uploaded images failed to process. Check if they are valid images.');
+            }
+            
+            let compositeArr = [];
+            let finalOutput;
+            // ... (rest of layout logic)
 
         if (layout === "4") {
             const photo = processedPhotos[0];
@@ -256,6 +254,7 @@ app.post('/upload', (req, res, next) => {
 
         await finalOutput
             .composite(compositeArr)
+            .png()
             .toFile(outputPath);
 
         console.log(`Job completed and saved to ${outputPath}`);
@@ -283,7 +282,10 @@ app.post('/upload', (req, res, next) => {
         console.error('Processing error:', err);
         res.status(500).json({ error: 'Processing failed', message: err.message });
     }
-});
+};
+
+app.post('/upload', uploadHandler);
+app.post('/api/upload', uploadHandler);
 
 // Global error handler
 app.use((err, req, res, next) => {

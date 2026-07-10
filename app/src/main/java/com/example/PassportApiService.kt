@@ -19,9 +19,9 @@ data class UploadResponse(
 
 interface PassportApiService {
     @Multipart
-    @POST("upload")
+    @POST("api/upload")
     suspend fun uploadPhoto(
-        @Part images: List<MultipartBody.Part>,
+        @Part parts: List<MultipartBody.Part>,
         @Part("layout") layout: RequestBody // "4", "8", or "2x4"
     ): Response<okhttp3.ResponseBody>
 
