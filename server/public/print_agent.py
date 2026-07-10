@@ -5,35 +5,43 @@ import time
 import subprocess
 
 def install_dependencies():
+    print("\n" + "="*50)
     print("Checking dependencies... (Libraries check kar rahe hain...)")
     try:
         import socketio
         import requests
         return True
     except ImportError:
-        print("\n" + "="*50)
         print("❌ [ERROR] Missing required libraries!")
         print("Installing automatically... (Apne aap install ho raha hai...)")
         try:
-            subprocess.check_call([sys.executable, "-m", "pip", "install", "python-socketio[client]", "requests"])
-            print("✅ Installation complete! Please restart the script.")
-            return True
+            # Try both pip and pip3
+            for pip_cmd in ["pip", "pip3"]:
+                try:
+                    subprocess.check_call([sys.executable, "-m", pip_cmd, "install", "python-socketio[client]", "requests"])
+                    print("✅ Installation complete!")
+                    return True
+                except:
+                    continue
+            return False
         except Exception as e:
             print(f"❌ Auto-installation failed: {e}")
-            print("\nManually run this command (Manually ye command chalayein):")
-            print(f"{sys.executable} -m pip install \"python-socketio[client]\" requests")
             return False
 
 def main():
     if not install_dependencies():
+        print("\nManually run: pip install \"python-socketio[client]\" requests")
         input("\nPress Enter to exit...")
         return
 
     import socketio
     import requests
 
-    # Current Session URL
-    DEFAULT_URL = "https://ais-pre-cqh5itcyojkioxx6udfd4o-1072374194741.asia-southeast1.run.app"
+    # ---------------------------------------------------------
+    # CONFIGURATION
+    # ---------------------------------------------------------
+    # Note: Replace this with your actual Render URL if you have one
+    DEFAULT_URL = "https://print-portal-julc.onrender.com"
     
     script_dir = os.path.dirname(os.path.abspath(__file__))
     DOWNLOAD_DIR = os.path.join(script_dir, "print_jobs")
@@ -44,11 +52,10 @@ def main():
     except Exception:
         DOWNLOAD_DIR = script_dir
 
-    # Using standard logger for socketio to see more details if it fails
     sio = socketio.Client(
         reconnection=True, 
-        reconnection_attempts=5, 
-        reconnection_delay=2,
+        reconnection_attempts=0, # Infinite retries
+        reconnection_delay=5,
         logger=False, 
         engineio_logger=False
     )
@@ -58,56 +65,61 @@ def main():
             os.system('cls' if os.name == 'nt' else 'clear')
         except:
             pass
-        print("="*60)
+        print("="*65)
         print("🖨️  EASY-PRINT LOCAL PRINT AGENT (ऑटो-प्रिंट एजेंट)")
-        print("="*60)
+        print("="*65)
+        print("हिन्दी निर्देश: यह प्रोग्राम आपके कंप्यूटर को प्रिंटर से जोड़ता है।")
+        print("अगर आप AI Studio का URL डाल रहे हैं और 404 आ रहा है, ")
+        print("तो इसका मतलब है कि सर्वर वहां नहीं चल रहा।")
+        print("अपना Render.com वाला URL इस्तेमाल करें।")
+        print("="*65)
 
     @sio.event
     def connect():
-        print(f"🔗 Connected to: {sio.connection_url}")
-        print("📡 Waiting for incoming print jobs... (प्रिंट जॉब्स की प्रतीक्षा कर रहा है...)")
-        print("Press Ctrl+C to exit.")
-        print("="*60)
+        print(f"\n✅ Connected to Server: {sio.connection_url}")
+        print("📡 Waiting for jobs... (प्रिंट जॉब्स की प्रतीक्षा कर रहा है...)")
+        print("Press Ctrl+C to stop.")
+        print("-" * 40)
 
     @sio.event
     def disconnect():
-        print("\n❌ Disconnected from Server. Retrying...")
+        print("\n❌ Connection lost. Retrying in 5 seconds...")
 
     @sio.on('print_job')
     def on_print_job(data):
         url = data.get('url')
         if not url: return
         
-        # Build absolute URL
+        # Build absolute URL correctly
         conn_url = sio.connection_url.rstrip('/')
         image_url = url if url.startswith('http') else f"{conn_url}{url}"
         
-        print(f"\n⚡ New Print Job Received!")
-        print(f"📄 Downloading: {image_url}")
+        print(f"\n[NEW JOB] Received: {image_url}")
         
         file_path = os.path.join(DOWNLOAD_DIR, f"print_{int(time.time())}.png")
         
         try:
-            response = requests.get(image_url, timeout=20)
+            print("⏳ Downloading image...")
+            response = requests.get(image_url, timeout=30)
             if response.status_code == 200:
                 with open(file_path, 'wb') as f:
                     f.write(response.content)
                 
-                print(f"✅ Saved to: {file_path}")
-                print(f"🖨️  Sending to printer...")
+                print(f"✅ Saved: {file_path}")
+                print(f"🖨️  Sending to default printer...")
                 
                 if os.name == 'nt': # Windows
                     os.startfile(file_path, "print")
                 else: # Linux/Mac
                     subprocess.run(["lp", file_path])
             else:
-                print(f"❌ Failed to download: HTTP {response.status_code}")
+                print(f"❌ Download failed: HTTP {response.status_code}")
         except Exception as e:
-            print(f"❌ Error during printing: {e}")
+            print(f"❌ Printing Error: {e}")
 
     print_banner()
-    print(f"Current Portal: {DEFAULT_URL}")
-    server_url = input(f"Enter Portal URL (Press Enter to use default): ").strip() or DEFAULT_URL
+    print(f"Suggested URL: {DEFAULT_URL}")
+    server_url = input(f"Enter Portal URL (Press Enter to use suggested): ").strip() or DEFAULT_URL
     
     if not server_url.startswith('http'):
         server_url = 'https://' + server_url
@@ -115,24 +127,23 @@ def main():
         server_url = server_url[:-1]
 
     try:
-        # Step 1: Check if URL is reachable via HTTP first
-        print(f"\nStep 1: Checking server availability...")
-        ping_res = requests.get(f"{server_url}/ping", timeout=10)
-        if ping_res.status_code == 200:
-            print("✅ Server is online.")
-        else:
-            print(f"⚠️  Server responded with status {ping_res.status_code}. Attempting Socket.IO anyway...")
+        print(f"\nChecking server: {server_url} ...")
+        # Try a quick ping
+        try:
+            requests.get(f"{server_url}/ping", timeout=5)
+        except:
+            pass # Socket.IO might work even if /ping fails
             
-        # Step 2: Attempt Socket.IO connection
-        print(f"Step 2: Connecting to Socket.IO...")
-        # We try with multiple transports to avoid 404 proxy issues
-        sio.connect(server_url, transports=['websocket', 'polling'], socketio_path='/socket.io/')
+        print(f"Connecting to Socket.IO...")
+        sio.connect(server_url, transports=['polling', 'websocket'])
         sio.wait()
     except KeyboardInterrupt:
-        print("\n\n👋 Agent stopped.")
+        print("\n\n👋 Stopped.")
     except Exception as e:
-        print(f"\n❌ Connection Error: {e}")
-        print("\nTip: Make sure you copied the correct 'Shared App URL' from AI Studio.")
+        print(f"\n❌ Error: {e}")
+        print("\nSALAHA (Suggestion):")
+        print("1. Copy correct URL from your Render Dashboard.")
+        print("2. Make sure server is UP and running.")
         input("\nPress Enter to try again...")
         main()
 
