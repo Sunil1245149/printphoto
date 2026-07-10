@@ -50,7 +50,10 @@ class PassportViewModel : ViewModel() {
             try {
                 val imageParts = uris.mapIndexed { index, uri ->
                     val file = uriToFile(context, uri, "upload_image_$index.jpg")
-                    val requestFile = file.asRequestBody("image/*".toMediaTypeOrNull())
+                    if (!file.exists() || file.length() == 0L) {
+                        throw Exception("Failed to prepare image for upload: ${file.name}")
+                    }
+                    val requestFile = file.asRequestBody("image/jpeg".toMediaTypeOrNull())
                     MultipartBody.Part.createFormData("image", file.name, requestFile)
                 }
                 
@@ -113,14 +116,28 @@ class PassportViewModel : ViewModel() {
         }
     }
 
-    private fun uriToFile(context: Context, uri: Uri, fileName: String = "upload_image.jpg"): File {
-        val inputStream = context.contentResolver.openInputStream(uri)
+    private fun uriToFile(context: Context, uri: Uri, fileName: String): File {
         val file = File(context.cacheDir, fileName)
-        val outputStream = FileOutputStream(file)
-        inputStream?.use { input ->
-            outputStream.use { output ->
-                input.copyTo(output)
+        try {
+            val inputStream = context.contentResolver.openInputStream(uri)
+            val bitmap = android.graphics.BitmapFactory.decodeStream(inputStream)
+            inputStream?.close()
+
+            if (bitmap != null) {
+                FileOutputStream(file).use { output ->
+                    bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 90, output)
+                }
+                bitmap.recycle()
+            } else {
+                // Fallback to direct copy
+                context.contentResolver.openInputStream(uri)?.use { input ->
+                    FileOutputStream(file).use { output ->
+                        input.copyTo(output)
+                    }
+                }
             }
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
         return file
     }

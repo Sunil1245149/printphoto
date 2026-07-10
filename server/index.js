@@ -64,7 +64,9 @@ app.post('/upload', (req, res, next) => {
         // Find all images regardless of fieldname for debugging
         const allFiles = req.files || [];
         console.log('Files count:', allFiles.length);
-        allFiles.forEach(f => console.log(` - File: field=${f.fieldname}, name=${f.originalname}, size=${f.size}`));
+        allFiles.forEach(f => {
+            console.log(` - File: field=${f.fieldname}, name=${f.originalname}, mimetype=${f.mimetype}, size=${f.size}, path=${f.path}`);
+        });
 
         const files = allFiles.filter(f => f.fieldname === 'image' || f.fieldname === 'images' || f.fieldname === 'photo');
         
@@ -74,6 +76,14 @@ app.post('/upload', (req, res, next) => {
                 files.push(allFiles[0]);
             } else {
                 return res.status(400).json({ success: false, error: 'No images uploaded' });
+            }
+        }
+
+        // Check if files are empty
+        for (const f of files) {
+            if (f.size === 0) {
+                console.error(`File ${f.originalname} is empty!`);
+                return res.status(400).json({ success: false, error: `File ${f.originalname} is empty` });
             }
         }
 
@@ -92,6 +102,10 @@ app.post('/upload', (req, res, next) => {
         // Helper to process a single photo with border and gap
         const processPhoto = async (filePath) => {
             console.log(`Processing file: ${filePath}`);
+            if (!fs.existsSync(filePath)) {
+                console.error(`File NOT found: ${filePath}`);
+                throw new Error(`File not found on server: ${path.basename(filePath)}`);
+            }
             try {
                 const photo = await sharp(filePath)
                     .resize(pWidth, pHeight, { fit: 'cover' })
