@@ -6,6 +6,7 @@ import okhttp3.RequestBody
 import retrofit2.Response
 import retrofit2.http.Multipart
 import retrofit2.http.POST
+import retrofit2.http.GET
 import retrofit2.http.Part
 
 @JsonClass(generateAdapter = true)
@@ -22,5 +23,8 @@ interface PassportApiService {
     suspend fun uploadPhoto(
         @Part images: List<MultipartBody.Part>,
         @Part("layout") layout: RequestBody // "4", "8", or "2x4"
-    ): Response<UploadResponse>
+    ): Response<okhttp3.ResponseBody>
+
+    @GET("ping")
+    suspend fun ping(): Response<okhttp3.ResponseBody>
 }

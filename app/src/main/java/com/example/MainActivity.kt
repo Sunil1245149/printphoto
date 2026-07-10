@@ -96,6 +96,9 @@ fun MainNavigation(voiceManager: VoiceManager) {
                 onGalleryClick = { uri ->
                     photoUris = listOf(uri)
                     navController.navigate("preview")
+                },
+                onPingClick = {
+                    viewModel.pingServer(context)
                 }
             )
         }

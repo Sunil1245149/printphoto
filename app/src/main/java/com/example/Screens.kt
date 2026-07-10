@@ -43,7 +43,8 @@ fun HomeScreen(
     onLanguageChange: (String) -> Unit,
     onCaptureClick: () -> Unit,
     onPortalClick: () -> Unit,
-    onGalleryClick: (Uri) -> Unit
+    onGalleryClick: (Uri) -> Unit,
+    onPingClick: () -> Unit = {}
 ) {
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -164,6 +165,12 @@ fun HomeScreen(
                 onClick = { launcher.launch("image/*") },
                 modifier = Modifier.fillMaxWidth()
             )
+
+            TextButton(onClick = onPingClick) {
+                Icon(Icons.Default.CloudSync, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Check Server Connection")
+            }
 
             Spacer(modifier = Modifier.height(8.dp))
 

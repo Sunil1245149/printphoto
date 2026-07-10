@@ -57,30 +57,34 @@ class PassportViewModel : ViewModel() {
                 val layoutBody = layout.toRequestBody("text/plain".toMediaTypeOrNull())
 
                 val response = apiService.uploadPhoto(imageParts, layoutBody)
+                val responseCode = response.code()
+                val rawBody = if (response.isSuccessful) response.body()?.string() else response.errorBody()?.string()
                 
-                if (response.isSuccessful) {
-                    val body = response.body()
-                    if (body?.success == true) {
-                        _uiState.value = UiState.Success
-                    } else {
-                        val errorMsg = body?.message ?: body?.error ?: "Server reported failure"
-                        _uiState.value = UiState.Error(errorMsg)
+                if (response.isSuccessful && rawBody != null) {
+                    try {
+                        val adapter = moshi.adapter(UploadResponse::class.java)
+                        val uploadResponse = adapter.fromJson(rawBody)
+                        if (uploadResponse?.success == true) {
+                            _uiState.value = UiState.Success
+                        } else {
+                            val errorMsg = uploadResponse?.message ?: uploadResponse?.error ?: "Server reported failure"
+                            _uiState.value = UiState.Error("Server: $errorMsg")
+                        }
+                    } catch (e: Exception) {
+                        val snippet = if (rawBody.length > 200) rawBody.substring(0, 200) + "..." else rawBody
+                        _uiState.value = UiState.Error("JSON Parse Error. Server sent: $snippet")
                     }
                 } else {
-                    val code = response.code()
-                    val errorBody = response.errorBody()?.string()
-                    _uiState.value = UiState.Error("Server Error ($code): ${errorBody ?: "No details"}")
+                    val snippet = if ((rawBody?.length ?: 0) > 200) rawBody?.substring(0, 200) + "..." else rawBody
+                    _uiState.value = UiState.Error("Server Error ($responseCode): ${snippet ?: "No details"}")
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
-                val message = when (e) {
-                    is java.net.UnknownHostException -> "Internet problem or wrong URL"
-                    is java.net.ConnectException -> "Cannot connect to server"
-                    is java.net.SocketTimeoutException -> "Server taking too long"
-                    is com.squareup.moshi.JsonEncodingException, is com.squareup.moshi.JsonDataException -> {
-                        // This usually means we got HTML instead of JSON
-                        "Server returned invalid data. Check URL or Server Logs."
-                    }
+                val message = when {
+                    e is java.net.UnknownHostException -> "Internet problem or wrong URL"
+                    e is java.net.ConnectException -> "Cannot connect to server"
+                    e is java.net.SocketTimeoutException -> "Server taking too long (Timeout)"
+                    e.message?.contains("Json") == true -> "Server returned malformed data (likely HTML error page)"
                     else -> "${e.javaClass.simpleName}: ${e.message}"
                 }
                 _uiState.value = UiState.Error("Network Error: $message")
@@ -90,6 +94,23 @@ class PassportViewModel : ViewModel() {
 
     fun resetState() {
         _uiState.value = UiState.Idle
+    }
+
+    fun pingServer(context: android.content.Context) {
+        viewModelScope.launch {
+            _uiState.value = UiState.Loading
+            try {
+                val response = apiService.ping()
+                if (response.isSuccessful) {
+                    _uiState.value = UiState.Idle
+                    android.widget.Toast.makeText(context, "Server is ONLINE", android.widget.Toast.LENGTH_SHORT).show()
+                } else {
+                    _uiState.value = UiState.Error("Server offline (${response.code()})")
+                }
+            } catch (e: Exception) {
+                _uiState.value = UiState.Error("Connection Failed: ${e.message}")
+            }
+        }
     }
 
     private fun uriToFile(context: Context, uri: Uri, fileName: String = "upload_image.jpg"): File {
