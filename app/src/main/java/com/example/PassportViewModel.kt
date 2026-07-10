@@ -59,25 +59,12 @@ class PassportViewModel : ViewModel() {
                         throw Exception("Failed to prepare image for upload: ${file.name}")
                     }
                     
-                    // Check if file is HTML (Magic: 3c21444f = <!DO, 3c68746d = <htm)
-                    val firstBytes = ByteArray(10)
+                    // Check if file is HTML/XML
+                    val firstBytes = ByteArray(50)
                     file.inputStream().use { it.read(firstBytes) }
                     val contentStart = firstBytes.toString(Charsets.UTF_8).lowercase()
                     if (contentStart.contains("<!doc") || contentStart.contains("<html") || contentStart.contains("<?xml")) {
-                        throw Exception("Internal Error: Image selection produced invalid data (HTML/XML). Please restart the app and try again.")
-                    }
-
-                    // Simple check if it's actually a JPEG/PNG/etc by looking for a known header
-                    val magic = firstBytes.joinToString("") { "%02x".format(it) }
-                    val isLikelyImage = magic.startsWith("ffd8") || // JPEG
-                                      magic.startsWith("89504e47") || // PNG
-                                      magic.startsWith("47494638") || // GIF
-                                      magic.startsWith("424d") || // BMP
-                                      magic.startsWith("52494646") // WEBP
-
-                    if (!isLikelyImage) {
-                        // If it's not a known header, but we decoded it as a bitmap, it should be fine.
-                        // But if it's the raw copy that's not a known image, we warn.
+                        throw Exception("Image data is invalid (HTML/XML detected). Please try picking another photo.")
                     }
 
                     val requestFile = file.asRequestBody("image/jpeg".toMediaTypeOrNull())
@@ -183,7 +170,7 @@ class PassportViewModel : ViewModel() {
 
             if (finalBitmap != null) {
                 FileOutputStream(file).use { output ->
-                    finalBitmap.compress(Bitmap.CompressFormat.JPEG, 90, output)
+                    finalBitmap.compress(Bitmap.CompressFormat.JPEG, 80, output)
                     output.flush()
                 }
                 finalBitmap.recycle()

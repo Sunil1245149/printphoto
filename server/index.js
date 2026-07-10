@@ -21,6 +21,9 @@ app.use('/outputs', express.static('outputs'));
 
 const upload = multer({ dest: 'uploads/' });
 
+// Disable sharp cache to save memory
+sharp.cache(false);
+
 // Ensure directories exist
 fs.ensureDirSync('uploads');
 fs.ensureDirSync('outputs');
@@ -139,14 +142,14 @@ app.post('/upload', (req, res, next) => {
                         })
                         .toBuffer();
                 } catch (sharpErr) {
-                    console.error(`Sharp failed for ${filePath}, trying Jimp as fallback: ${sharpErr.message}`);
+                    console.error(`Sharp failed for ${filePath}, trying Jimp: ${sharpErr.message}`);
                     try {
                         const jimpImage = await Jimp.read(buffer);
                         const resizedBuffer = await jimpImage
                             .cover(pWidth, pHeight)
                             .getBufferAsync(Jimp.MIME_PNG);
                         
-                        // Add border using sharp on the jimp result
+                        // Add border using sharp on the jimp result (sharp is more reliable for simple transforms)
                         photo = await sharp(resizedBuffer)
                             .extend({
                                 top: borderSize, bottom: borderSize, left: borderSize, right: borderSize,
@@ -155,9 +158,7 @@ app.post('/upload', (req, res, next) => {
                             .toBuffer();
                     } catch (jimpErr) {
                         console.error(`Jimp also failed for ${filePath}: ${jimpErr.message}`);
-                        // Last resort: if it's a small file, maybe it's just a tiny image sharp can't handle?
-                        // Or if it's a buffer that sharp can't recognize, we give up here.
-                        throw new Error(`Both Sharp and Jimp failed. Sharp: ${sharpErr.message}, Jimp: ${jimpErr.message}`);
+                        throw new Error(`Image format not recognized or file is corrupt. Please try a standard JPEG or PNG image.`);
                     }
                 }
                 
