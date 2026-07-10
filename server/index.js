@@ -117,7 +117,13 @@ app.post('/upload', (req, res, next) => {
             try {
                 buffer = await fs.readFile(filePath);
                 const magic = buffer.slice(0, 8).toString('hex');
+                const startOfFile = buffer.slice(0, 100).toString('utf8');
                 console.log(`Read ${buffer.length} bytes into buffer. Magic: ${magic}`);
+                console.log(`Start of file (first 100 bytes): ${startOfFile}`);
+
+                if (buffer.toString('utf8', 0, 15).includes('<!DOCTYPE') || buffer.toString('utf8', 0, 15).includes('<html')) {
+                    throw new Error(`The file uploaded is actually an HTML page, not an image. This usually happens if the server returned an error page during upload or if the client is misconfigured.`);
+                }
                 
                 const photo = await sharp(buffer) // Use buffer for extra certainty
                     .rotate() // Respect EXIF orientation
