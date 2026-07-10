@@ -3,93 +3,94 @@ try:
     import socketio
     import requests
 except ImportError:
-    print("\n[ERROR] Missing required libraries!")
-    print("Please run this command first:")
+    print("\n" + "="*50)
+    print("❌ [ERROR] Missing required libraries!")
+    print("Please run this command first (यह कमांड चलाएं):")
     print("pip install \"python-socketio[client]\" requests")
+    print("="*50)
     input("\nPress Enter to exit...")
     exit(1)
 
 import os
-import subprocess
 import time
+import sys
+import subprocess
 
 # Configuration
+# Note: AI Studio URL changes per session, this is the current one
 DEFAULT_URL = "https://ais-pre-cqh5itcyojkioxx6udfd4o-1072374194741.asia-southeast1.run.app"
-print(f"Default URL: {DEFAULT_URL}")
-SERVER_URL = input(f"Enter Portal URL (Press Enter for default): ") or DEFAULT_URL
 DOWNLOAD_DIR = "downloads"
-
-if SERVER_URL.endswith('/'):
-    SERVER_URL = SERVER_URL[:-1]
 
 if not os.path.exists(DOWNLOAD_DIR):
     os.makedirs(DOWNLOAD_DIR)
 
-sio = socketio.Client()
+sio = socketio.Client(reconnection=True, reconnection_attempts=0, reconnection_delay=5)
+
+def print_banner():
+    os.system('cls' if os.name == 'nt' else 'clear')
+    print("="*60)
+    print("🖨️  EASY-PRINT LOCAL PRINT AGENT (ऑटो-प्रिंट एजेंट)")
+    print("="*60)
 
 @sio.event
 def connect():
-    print("Connected to Merchant Portal Server")
+    print(f"🔗 Connected to: {sio.connection_url}")
+    print("📡 Waiting for incoming print jobs... (प्रिंट जॉब्स की प्रतीक्षा कर रहा है...)")
+    print("Press Ctrl+C to exit.")
+    print("="*60)
 
 @sio.event
 def disconnect():
-    print("Disconnected from Server")
+    print("\n❌ Disconnected from Server. Retrying... (सर्वर से संपर्क टूट गया है...)")
 
 @sio.on('print_job')
 def on_print_job(data):
     url = data.get('url')
     if not url: return
     
-    # Check if absolute or relative
-    if url.startswith('/'):
-        image_url = f"{SERVER_URL}{url}"
-    else:
-        image_url = url
-        
-    print(f"New print job: {image_url}")
+    image_url = url if url.startswith('http') else f"{sio.connection_url}{url}"
+    
+    print(f"\n⚡ New Print Job Received! (नया प्रिंट जॉब मिला है!)")
+    print(f"📄 URL: {image_url}")
+    
     file_path = os.path.join(DOWNLOAD_DIR, f"auto_print_{int(time.time())}.png")
     
     try:
-        response = requests.get(image_url)
+        response = requests.get(image_url, timeout=10)
         if response.status_code == 200:
             with open(file_path, 'wb') as f:
                 f.write(response.content)
-            print(f"Saved to {file_path}")
             
-            print(f"Sending {file_path} to printer...")
+            print(f"✅ Downloaded successfully. Sending to printer...")
             if os.name == 'nt': # Windows
                 os.startfile(file_path, "print")
             else: # Linux/Mac
                 subprocess.run(["lp", file_path])
         else:
-            print(f"Failed to download image: {response.status_code}")
+            print(f"❌ Failed to download: HTTP {response.status_code}")
     except Exception as e:
-        print(f"Error during printing: {e}")
-
-@sio.on('job-completed')
-def on_job_completed(data):
-    print(f"Job completed notification: {data['id']}")
-    # Optional: we can trigger print here too if desired, but 'print_job' is more direct
+        print(f"❌ Error during printing: {e}")
 
 def start_agent():
-    while True:
-        try:
-            print(f"Connecting to {SERVER_URL}...")
-            sio.connect(SERVER_URL)
-            sio.wait()
-        except Exception as e:
-            print(f"Connection error or lost: {e}")
-            print("Retrying in 10 seconds...")
-            time.sleep(10)
+    print_banner()
+    print(f"Default URL: {DEFAULT_URL}")
+    server_url = input(f"Enter Portal URL (Press Enter for default): ").strip() or DEFAULT_URL
+    
+    if not server_url.startswith('http'):
+        server_url = 'https://' + server_url
+    if server_url.endswith('/'):
+        server_url = server_url[:-1]
 
-if __name__ == "__main__":
-    print("--- PassportPrint Pro Auto-Print Agent ---")
-    print(f"Monitoring: {SERVER_URL}")
     try:
-        start_agent()
+        sio.connect(server_url)
+        sio.wait()
     except KeyboardInterrupt:
-        print("\nAgent stopped by user.")
+        print("\n\n👋 Agent stopped by user. (एजेंट बंद कर दिया गया है।)")
+        sys.exit(0)
     except Exception as e:
-        print(f"Critical error: {e}")
-    finally:
-        input("\nAgent finished. Press Enter to close...")
+        print(f"\n❌ Connection Error: {e}")
+        input("\nPress Enter to try again...")
+        start_agent()
+
+if __name__ == '__main__':
+    start_agent()
