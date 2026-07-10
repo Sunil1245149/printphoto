@@ -231,6 +231,36 @@
 
         /* Modal / File Input */
         #manualUpload { display: none; }
+
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            #preview-area, #preview-area * {
+                visibility: visible;
+            }
+            #preview-area {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                margin: 0;
+                padding: 0;
+            }
+            #live-preview {
+                width: 100% !important;
+                height: auto !important;
+                box-shadow: none !important;
+                border-radius: 0 !important;
+            }
+            .container, .card, .main-grid {
+                padding: 0 !important;
+                margin: 0 !important;
+                box-shadow: none !important;
+                border: none !important;
+                background: none !important;
+            }
+        }
     </style>
 </head>
 <body>

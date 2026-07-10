@@ -92,7 +92,7 @@ const uploadHandler = [
             const pWidth = 413; // 3.5cm
             const pHeight = 531; // 4.5cm
             const borderSize = 2;
-            const gapSize = 10; 
+            const gapSize = 15; 
 
             // Helper to process a single photo
             const processPhoto = async (file) => {
@@ -204,7 +204,7 @@ const uploadHandler = [
             const margin = 100;
             const fullW = pWidth + (borderSize + gapSize) * 2;
             const fullH = pHeight + (borderSize + gapSize) * 2;
-            const gap = 100;
+            const gap = 150;
 
             compositeArr = [
                 { input: photo, top: margin, left: margin },

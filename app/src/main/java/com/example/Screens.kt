@@ -78,7 +78,7 @@ fun HomeScreen(
                         }
                         Text(
                             text = "PassportPrint Pro",
-                            style = MaterialTheme.typography.titleLarge.copy(
+                            style = MaterialTheme.typography.titleMedium.copy(
                                 fontWeight = FontWeight.ExtraBold,
                                 letterSpacing = (-0.5).sp
                             )
@@ -113,7 +113,7 @@ fun HomeScreen(
                 ) {
                     Icon(Icons.Default.CameraAlt, contentDescription = null)
                     Spacer(modifier = Modifier.width(12.dp))
-                    Text("Start Capture", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                    Text("Start Capture", fontSize = 16.sp, fontWeight = FontWeight.Bold)
                 }
                 
                 Spacer(modifier = Modifier.height(12.dp))
@@ -180,7 +180,7 @@ fun HomeScreen(
                 color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
             ) {
                 Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    Text("Printing Tips", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                    Text("Printing Tips", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
                     LayoutItem(Icons.Default.Lightbulb, "Good Lighting", "Ensure face is evenly lit")
                     LayoutItem(Icons.Default.Straighten, "Alignment", "Keep eyes within the guide")
                     LayoutItem(Icons.Default.Print, "Ready to Print", "Layouts are chosen after capture")
@@ -429,8 +429,8 @@ fun PreviewScreen(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        Text("Select Print Layout", fontWeight = FontWeight.Bold, fontSize = 22.sp)
-        Text("Standard size 3.5x4.5cm", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text("Select Print Layout", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+        Text("Standard size 3.5x4.5cm", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         
         Row(
             modifier = Modifier
@@ -565,7 +565,7 @@ fun LayoutOption(
             Text(
                 text = label,
                 color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
-                style = MaterialTheme.typography.titleSmall.copy(
+                style = MaterialTheme.typography.labelMedium.copy(
                     fontWeight = if (isSelected) FontWeight.ExtraBold else FontWeight.Medium
                 )
             )
@@ -598,10 +598,10 @@ fun DashboardCard(
                     .background(Color.White.copy(alpha = 0.5f), CircleShape),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(icon, contentDescription = null, tint = Color.Black.copy(alpha = 0.7f))
+                Icon(icon, contentDescription = null, tint = Color.Black.copy(alpha = 0.7f), modifier = Modifier.size(20.dp))
             }
             Column {
-                Text(title, fontWeight = FontWeight.Bold, color = Color.Black)
+                Text(title, fontWeight = FontWeight.Bold, color = Color.Black, style = MaterialTheme.typography.bodySmall)
                 Text(subtitle, style = MaterialTheme.typography.labelSmall, color = Color.Black.copy(alpha = 0.6f))
             }
         }
@@ -621,7 +621,7 @@ fun LanguageSelector(
     ) {
         Text(
             text = "Voice Assistant Language",
-            style = MaterialTheme.typography.labelMedium,
+            style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontWeight = FontWeight.Bold
         )
@@ -649,7 +649,7 @@ fun LanguageSelector(
                     ) {
                         Text(
                             text = if (lang == "Hindi") "हिन्दी" else if (lang == "Marathi") "मराठी" else "English",
-                            style = MaterialTheme.typography.labelLarge.copy(
+                            style = MaterialTheme.typography.labelMedium.copy(
                                 fontWeight = if (isSelected) FontWeight.ExtraBold else FontWeight.Medium
                             )
                         )

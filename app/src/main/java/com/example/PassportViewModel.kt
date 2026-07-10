@@ -172,13 +172,39 @@ class PassportViewModel : ViewModel() {
             }
 
             if (bitmap != null) {
+                // Crop to passport frame (3.5x4.5 aspect ratio)
+                // The frame in PassportOverlay is 65% of screen width
+                // and centered horizontally, with a 1/3 top vertical bias.
+                val original = bitmap!!
+                
+                // We assume the bitmap matches the screen aspect ratio for cropping
+                // if it was captured in 'fillMaxSize' mode.
+                val frameWidth = (original.width * 0.65f).toInt()
+                val frameHeight = (frameWidth * 4.5f / 3.5f).toInt()
+                
+                val frameLeft = (original.width - frameWidth) / 2
+                // Calculate frameTop using the same 1/3 bias as the overlay
+                val frameTop = (original.height - frameHeight) / 3
+                
+                // Ensure bounds are valid and within the bitmap
+                val safeWidth = Math.min(frameWidth, original.width)
+                val safeHeight = Math.min(frameHeight, original.height)
+                val safeLeft = Math.max(0, Math.min(frameLeft, original.width - safeWidth))
+                val safeTop = Math.max(0, Math.min(frameTop, original.height - safeHeight))
+                
+                val cropped = Bitmap.createBitmap(original, safeLeft, safeTop, safeWidth, safeHeight)
+                
                 FileOutputStream(file).use { output ->
-                    val success = bitmap!!.compress(Bitmap.CompressFormat.JPEG, 90, output)
+                    val success = cropped.compress(Bitmap.CompressFormat.JPEG, 90, output)
                     if (!success) throw Exception("Bitmap compression failed")
                     output.flush()
                 }
-                bitmap?.recycle()
-                android.util.Log.d("PassportApp", "Image compressed to JPEG: ${file.length()} bytes")
+                
+                if (cropped != original) {
+                    cropped.recycle()
+                }
+                original.recycle()
+                android.util.Log.d("PassportApp", "Image cropped to frame: ${safeWidth}x${safeHeight} at ($safeLeft, $safeTop)")
             } else {
                 // Raw copy as last resort
                 context.contentResolver.openInputStream(uri)?.use { input ->
