@@ -172,27 +172,28 @@ class PassportViewModel : ViewModel() {
             }
 
             if (bitmap != null) {
-                // Crop to passport frame (3.5x4.5 aspect ratio)
-                // The frame in PassportOverlay is 65% of screen width
-                // and centered horizontally, with a 1/3 top vertical bias.
                 val original = bitmap!!
-                
-                // We assume the bitmap matches the screen aspect ratio for cropping
-                // if it was captured in 'fillMaxSize' mode.
-                val frameWidth = (original.width * 0.65f).toInt()
+                // Correct for EXIF rotation
+                val rotation = getRotation(uri, context)
+                val matrix = android.graphics.Matrix().apply {
+                    if (rotation != 0f) preRotate(rotation)
+                }
+
+                val oriented = Bitmap.createBitmap(original, 0, 0, original.width, original.height, matrix, true)
+
+                // Now crop the oriented bitmap
+                val frameWidth = (oriented.width * 0.65f).toInt()
                 val frameHeight = (frameWidth * 4.5f / 3.5f).toInt()
                 
-                val frameLeft = (original.width - frameWidth) / 2
-                // Calculate frameTop using the same 1/3 bias as the overlay
-                val frameTop = (original.height - frameHeight) / 3
+                val frameLeft = (oriented.width - frameWidth) / 2
+                val frameTop = (oriented.height - frameHeight) / 3
                 
-                // Ensure bounds are valid and within the bitmap
-                val safeWidth = Math.min(frameWidth, original.width)
-                val safeHeight = Math.min(frameHeight, original.height)
-                val safeLeft = Math.max(0, Math.min(frameLeft, original.width - safeWidth))
-                val safeTop = Math.max(0, Math.min(frameTop, original.height - safeHeight))
+                val safeWidth = Math.min(frameWidth, oriented.width)
+                val safeHeight = Math.min(frameHeight, oriented.height)
+                val safeLeft = Math.max(0, Math.min(frameLeft, oriented.width - safeWidth))
+                val safeTop = Math.max(0, Math.min(frameTop, oriented.height - safeHeight))
                 
-                val cropped = Bitmap.createBitmap(original, safeLeft, safeTop, safeWidth, safeHeight)
+                val cropped = Bitmap.createBitmap(oriented, safeLeft, safeTop, safeWidth, safeHeight)
                 
                 FileOutputStream(file).use { output ->
                     val success = cropped.compress(Bitmap.CompressFormat.JPEG, 90, output)
@@ -200,11 +201,10 @@ class PassportViewModel : ViewModel() {
                     output.flush()
                 }
                 
-                if (cropped != original) {
-                    cropped.recycle()
-                }
+                if (cropped != oriented) cropped.recycle()
+                if (oriented != original) oriented.recycle()
                 original.recycle()
-                android.util.Log.d("PassportApp", "Image cropped to frame: ${safeWidth}x${safeHeight} at ($safeLeft, $safeTop)")
+                android.util.Log.d("PassportApp", "Image cropped to frame: ${safeWidth}x${safeHeight} at ($safeLeft, $safeTop) with rotation $rotation")
             } else {
                 // Raw copy as last resort
                 context.contentResolver.openInputStream(uri)?.use { input ->
@@ -247,5 +247,21 @@ class PassportViewModel : ViewModel() {
         object Loading : UiState()
         object Success : UiState()
         data class Error(val message: String) : UiState()
+    }
+
+    private fun getRotation(uri: Uri, context: Context): Float {
+        return try {
+            context.contentResolver.openInputStream(uri)?.use { input ->
+                val exifInterface = androidx.exifinterface.media.ExifInterface(input)
+                when (exifInterface.getAttributeInt(androidx.exifinterface.media.ExifInterface.TAG_ORIENTATION, androidx.exifinterface.media.ExifInterface.ORIENTATION_NORMAL)) {
+                    androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_90 -> 90f
+                    androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_180 -> 180f
+                    androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_270 -> 270f
+                    else -> 0f
+                }
+            } ?: 0f
+        } catch (e: Exception) {
+            0f
+        }
     }
 }

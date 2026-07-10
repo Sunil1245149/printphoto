@@ -113,18 +113,18 @@ fun HomeScreen(
                 ) {
                     Icon(Icons.Default.CameraAlt, contentDescription = null)
                     Spacer(modifier = Modifier.width(12.dp))
-                    Text("Start Capture", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    Text("Start Capture", fontSize = 14.sp, fontWeight = FontWeight.Bold)
                 }
                 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(8.dp))
                 
                 OutlinedButton(
                     onClick = { launcher.launch("image/*") },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(64.dp)
+                        .height(54.dp)
                         .padding(horizontal = 24.dp),
-                    shape = RoundedCornerShape(16.dp)
+                    shape = RoundedCornerShape(12.dp)
                 ) {
                     Icon(Icons.Default.PhotoLibrary, contentDescription = null)
                     Spacer(modifier = Modifier.width(12.dp))
@@ -572,13 +572,14 @@ fun DashboardCard(
 ) {
     Surface(
         onClick = onClick,
-        modifier = modifier.height(110.dp),
-        shape = RoundedCornerShape(20.dp),
+        modifier = modifier.height(90.dp),
+        shape = RoundedCornerShape(16.dp),
         color = color
     ) {
-        Column(
+        Row(
             modifier = Modifier.padding(12.dp),
-            verticalArrangement = Arrangement.Center
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Box(
                 modifier = Modifier
@@ -586,11 +587,12 @@ fun DashboardCard(
                     .background(Color.White.copy(alpha = 0.5f), CircleShape),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(icon, contentDescription = null, tint = Color.Black.copy(alpha = 0.7f), modifier = Modifier.size(18.dp))
+                Icon(icon, contentDescription = null, tint = Color.Black.copy(alpha = 0.7f), modifier = Modifier.size(16.dp))
             }
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(title, fontWeight = FontWeight.Bold, color = Color.Black, style = MaterialTheme.typography.titleSmall)
-            Text(subtitle, style = MaterialTheme.typography.labelSmall, color = Color.Black.copy(alpha = 0.6f))
+            Column {
+                Text(title, fontWeight = FontWeight.Bold, color = Color.Black, style = MaterialTheme.typography.bodyMedium)
+                Text(subtitle, style = MaterialTheme.typography.labelSmall, color = Color.Black.copy(alpha = 0.6f))
+            }
         }
     }
 }

@@ -72,4 +72,5 @@ if __name__ == "__main__":
         print("\nAgent stopped by user.")
     except Exception as e:
         print(f"Critical error: {e}")
-        input("Press Enter to close...")
+    finally:
+        input("\nAgent finished. Press Enter to close...")

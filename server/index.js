@@ -223,17 +223,19 @@ const uploadHandler = [
             const fullH = pHeight + (borderSize + gapSize) * 2;
             
             // On 1800x1200 (6x4 Landscape)
-            // We can fit 4 photos across (4 * ~450 = 1800)
-            // And 2 photos down (2 * ~550 = 1100)
-            const marginX = Math.max(10, (sheetWidth - (fullW * 4)) / 2);
-            const marginY = Math.max(10, (sheetHeight - (fullH * 2)) / 2);
-            const interGap = 20;
+            const interGapX = 30;
+            const interGapY = 50;
+            const totalW = (fullW * 4) + (interGapX * 3);
+            const totalH = (fullH * 2) + interGapY;
+
+            const marginX = Math.max(10, (sheetWidth - totalW) / 2);
+            const marginY = Math.max(10, (sheetHeight - totalH) / 2);
 
             for (let i = 0; i < 4; i++) {
-                compositeArr.push({ input: photo1, top: marginY, left: marginX + i * (fullW + interGap/4) });
+                compositeArr.push({ input: photo1, top: marginY, left: marginX + i * (fullW + interGapX) });
             }
             for (let i = 0; i < 4; i++) {
-                compositeArr.push({ input: photo2, top: marginY + fullH + interGap, left: marginX + i * (fullW + interGap/4) });
+                compositeArr.push({ input: photo2, top: marginY + fullH + interGapY, left: marginX + i * (fullW + interGapX) });
             }
 
             finalOutput = sharp({
@@ -244,15 +246,20 @@ const uploadHandler = [
             const fullW = pWidth + (borderSize + gapSize) * 2;
             const fullH = pHeight + (borderSize + gapSize) * 2;
             
-            const marginX = (sheetWidth - (fullW * 4)) / 2;
-            const marginY = (sheetHeight - (fullH * 2)) / 2;
+            const interGapX = 25;
+            const interGapY = 40;
+            const totalW = (fullW * 4) + (interGapX * 3);
+            const totalH = (fullH * 2) + interGapY;
+
+            const marginX = Math.max(10, (sheetWidth - totalW) / 2);
+            const marginY = Math.max(10, (sheetHeight - totalH) / 2);
 
             for (let row = 0; row < 2; row++) {
                 for (let col = 0; col < 4; col++) {
                     compositeArr.push({
                         input: photo,
-                        top: marginY + row * fullH,
-                        left: marginX + col * fullW
+                        top: marginY + row * (fullH + interGapY),
+                        left: marginX + col * (fullW + interGapX)
                     });
                 }
             }
