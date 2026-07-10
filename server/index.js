@@ -106,8 +106,19 @@ app.post('/upload', (req, res, next) => {
                 console.error(`File NOT found: ${filePath}`);
                 throw new Error(`File not found on server: ${path.basename(filePath)}`);
             }
+
+            const stats = fs.statSync(filePath);
+            console.log(`File size on disk: ${stats.size} bytes`);
+            if (stats.size === 0) {
+                throw new Error(`File ${path.basename(filePath)} is empty (0 bytes)`);
+            }
+
             try {
-                const photo = await sharp(filePath)
+                // Read into buffer to verify it's not a path issue
+                const buffer = await fs.readFile(filePath);
+                console.log(`Read ${buffer.length} bytes into buffer. First 4 bytes: ${buffer.slice(0, 4).toString('hex')}`);
+
+                const photo = await sharp(buffer)
                     .resize(pWidth, pHeight, { fit: 'cover' })
                     // Black border
                     .extend({

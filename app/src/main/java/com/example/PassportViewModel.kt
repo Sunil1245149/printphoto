@@ -119,25 +119,35 @@ class PassportViewModel : ViewModel() {
     private fun uriToFile(context: Context, uri: Uri, fileName: String): File {
         val file = File(context.cacheDir, fileName)
         try {
+            val options = android.graphics.BitmapFactory.Options().apply {
+                inPreferredConfig = android.graphics.Bitmap.Config.ARGB_8888
+            }
             val inputStream = context.contentResolver.openInputStream(uri)
-            val bitmap = android.graphics.BitmapFactory.decodeStream(inputStream)
+            val bitmap = android.graphics.BitmapFactory.decodeStream(inputStream, null, options)
             inputStream?.close()
 
             if (bitmap != null) {
                 FileOutputStream(file).use { output ->
-                    bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 90, output)
+                    // Use 100 quality for best results, or 90 to be safe
+                    val success = bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 95, output)
+                    if (!success) throw Exception("Bitmap compression failed")
                 }
                 bitmap.recycle()
             } else {
-                // Fallback to direct copy
+                throw Exception("Could not decode image from Uri. Unsupported format?")
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            // Last resort fallback: direct copy if it's already a JPEG/PNG
+            try {
                 context.contentResolver.openInputStream(uri)?.use { input ->
                     FileOutputStream(file).use { output ->
                         input.copyTo(output)
                     }
                 }
+            } catch (e2: Exception) {
+                e2.printStackTrace()
             }
-        } catch (e: Exception) {
-            e.printStackTrace()
         }
         return file
     }
