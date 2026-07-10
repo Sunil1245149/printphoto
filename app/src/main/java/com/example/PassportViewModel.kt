@@ -33,7 +33,7 @@ class PassportViewModel : ViewModel() {
         .addInterceptor(logging)
         .addInterceptor { chain ->
             val request = chain.request().newBuilder()
-                .header("User-Agent", "PassportPrintApp/1.1")
+                .header("User-Agent", "Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Mobile Safari/537.36")
                 .build()
             chain.proceed(request)
         }
@@ -173,17 +173,23 @@ class PassportViewModel : ViewModel() {
 
             if (bitmap != null) {
                 FileOutputStream(file).use { output ->
-                    bitmap!!.compress(Bitmap.CompressFormat.JPEG, 85, output)
+                    val success = bitmap!!.compress(Bitmap.CompressFormat.JPEG, 90, output)
+                    if (!success) throw Exception("Bitmap compression failed")
                     output.flush()
                 }
                 bitmap?.recycle()
+                android.util.Log.d("PassportApp", "Image compressed to JPEG: ${file.length()} bytes")
             } else {
                 // Raw copy as last resort
                 context.contentResolver.openInputStream(uri)?.use { input ->
                     FileOutputStream(file).use { output ->
-                        input.copyTo(output)
+                        val bytes = input.copyTo(output)
+                        android.util.Log.d("PassportApp", "Raw copy successful: $bytes bytes")
                     }
                 }
+            }
+            if (!file.exists() || file.length() == 0L) {
+                throw Exception("Resulting file is empty or missing")
             }
         } catch (e: Exception) {
             try {

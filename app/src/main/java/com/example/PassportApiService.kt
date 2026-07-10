@@ -19,12 +19,12 @@ data class UploadResponse(
 
 interface PassportApiService {
     @Multipart
-    @POST("api/upload")
+    @POST("/upload")
     suspend fun uploadPhoto(
         @Part parts: List<MultipartBody.Part>,
         @Part("layout") layout: RequestBody // "4", "8", or "2x4"
     ): Response<okhttp3.ResponseBody>
 
-    @GET("ping")
+    @GET("/ping")
     suspend fun ping(): Response<okhttp3.ResponseBody>
 }

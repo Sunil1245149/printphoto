@@ -16,6 +16,10 @@ const io = new Server(server, {
 
 app.use(cors());
 app.use(express.json());
+app.use((req, res, next) => {
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+    next();
+});
 app.use(express.static('public'));
 app.use('/outputs', express.static('outputs'));
 
@@ -69,6 +73,7 @@ const uploadHandler = [
             
             const allFiles = req.files || [];
             console.log('Files count:', allFiles.length);
+            allFiles.forEach(f => console.log(` - File: ${f.originalname}, Size: ${f.size}, Mime: ${f.mimetype}`));
             
             // Accept any file field
             const files = allFiles;
@@ -150,7 +155,8 @@ const uploadHandler = [
                             .toBuffer();
                     } catch (jimpErr) {
                         console.error(`Jimp also failed for ${file.originalname}: ${jimpErr.message}`);
-                        throw new Error(`Image format not supported: ${file.originalname}. Please use JPEG or PNG.`);
+                        const magic = buffer.slice(0, 10).toString('hex');
+                        throw new Error(`Image format not supported or file is corrupt (${file.originalname}). Type: ${file.mimetype}, Magic: ${magic}. Try another photo.`);
                     }
                 }
                 
@@ -282,7 +288,7 @@ const uploadHandler = [
         console.error('Processing error:', err);
         res.status(500).json({ error: 'Processing failed', message: err.message });
     }
-};
+}];
 
 app.post('/upload', uploadHandler);
 app.post('/api/upload', uploadHandler);
@@ -308,6 +314,12 @@ app.post('/settings', (req, res) => {
     res.json({ success: true });
 });
 
+// Catch-all for 404s
+app.use((req, res) => {
+    console.warn(`[404 NOT FOUND] ${req.method} ${req.url}`);
+    res.status(404).json({ error: 'Route not found', path: req.url, method: req.method });
+});
+
 app.get('/history', (req, res) => {
     res.json(history);
 });
@@ -318,6 +330,6 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 8080;
-server.listen(PORT, () => {
+server.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on port ${PORT}`);
 });
