@@ -3,6 +3,7 @@ const http = require('http');
 const { Server } = require('socket.io');
 const multer = require('multer');
 const sharp = require('sharp');
+const Jimp = require('jimp');
 const path = require('path');
 const fs = require('fs-extra');
 const cors = require('cors');
@@ -121,19 +122,44 @@ app.post('/upload', (req, res, next) => {
                 console.log(`Read ${buffer.length} bytes into buffer. Magic: ${magic}`);
                 console.log(`Start of file (first 100 bytes): ${startOfFile}`);
 
-                if (buffer.toString('utf8', 0, 15).includes('<!DOCTYPE') || buffer.toString('utf8', 0, 15).includes('<html')) {
-                    throw new Error(`The file uploaded is actually an HTML page, not an image. This usually happens if the server returned an error page during upload or if the client is misconfigured.`);
+                if (buffer.toString('utf8', 0, 15).toLowerCase().includes('<!doctype') || 
+                    buffer.toString('utf8', 0, 15).toLowerCase().includes('<html')) {
+                    throw new Error(`The file uploaded is an HTML page, not an image. This usually means a server error page was captured.`);
                 }
                 
-                const photo = await sharp(buffer) // Use buffer for extra certainty
-                    .rotate() // Respect EXIF orientation
-                    .resize(pWidth, pHeight, { fit: 'cover' })
-                    // Black border
-                    .extend({
-                        top: borderSize, bottom: borderSize, left: borderSize, right: borderSize,
-                        background: { r: 0, g: 0, b: 0, alpha: 1 }
-                    })
-                    .toBuffer();
+                let photo;
+                try {
+                    // Try sharp first
+                    photo = await sharp(buffer)
+                        .rotate()
+                        .resize(pWidth, pHeight, { fit: 'cover' })
+                        .extend({
+                            top: borderSize, bottom: borderSize, left: borderSize, right: borderSize,
+                            background: { r: 0, g: 0, b: 0, alpha: 1 }
+                        })
+                        .toBuffer();
+                } catch (sharpErr) {
+                    console.error(`Sharp failed for ${filePath}, trying Jimp as fallback: ${sharpErr.message}`);
+                    try {
+                        const jimpImage = await Jimp.read(buffer);
+                        const resizedBuffer = await jimpImage
+                            .cover(pWidth, pHeight)
+                            .getBufferAsync(Jimp.MIME_PNG);
+                        
+                        // Add border using sharp on the jimp result
+                        photo = await sharp(resizedBuffer)
+                            .extend({
+                                top: borderSize, bottom: borderSize, left: borderSize, right: borderSize,
+                                background: { r: 0, g: 0, b: 0, alpha: 1 }
+                            })
+                            .toBuffer();
+                    } catch (jimpErr) {
+                        console.error(`Jimp also failed for ${filePath}: ${jimpErr.message}`);
+                        // Last resort: if it's a small file, maybe it's just a tiny image sharp can't handle?
+                        // Or if it's a buffer that sharp can't recognize, we give up here.
+                        throw new Error(`Both Sharp and Jimp failed. Sharp: ${sharpErr.message}, Jimp: ${jimpErr.message}`);
+                    }
+                }
                 
                 console.log(`Photo processed successfully: ${filePath}`);
 

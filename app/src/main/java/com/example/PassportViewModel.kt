@@ -6,7 +6,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.launch
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.asRequestBody
@@ -46,15 +50,38 @@ class PassportViewModel : ViewModel() {
 
     fun uploadPhoto(context: Context, uris: List<Uri>, layout: String) {
         _uiState.value = UiState.Loading
-        viewModelScope.launch {
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             try {
                 val imageParts = uris.mapIndexed { index, uri ->
-                    val file = uriToFile(context, uri, "upload_image_$index.jpg")
+                    val uniqueName = "upload_${System.currentTimeMillis()}_$index.jpg"
+                    val file = uriToFile(context, uri, uniqueName)
                     if (!file.exists() || file.length() == 0L) {
                         throw Exception("Failed to prepare image for upload: ${file.name}")
                     }
+                    
+                    // Check if file is HTML (Magic: 3c21444f = <!DO, 3c68746d = <htm)
+                    val firstBytes = ByteArray(10)
+                    file.inputStream().use { it.read(firstBytes) }
+                    val contentStart = firstBytes.toString(Charsets.UTF_8).lowercase()
+                    if (contentStart.contains("<!doc") || contentStart.contains("<html") || contentStart.contains("<?xml")) {
+                        throw Exception("Internal Error: Image selection produced invalid data (HTML/XML). Please restart the app and try again.")
+                    }
+
+                    // Simple check if it's actually a JPEG/PNG/etc by looking for a known header
+                    val magic = firstBytes.joinToString("") { "%02x".format(it) }
+                    val isLikelyImage = magic.startsWith("ffd8") || // JPEG
+                                      magic.startsWith("89504e47") || // PNG
+                                      magic.startsWith("47494638") || // GIF
+                                      magic.startsWith("424d") || // BMP
+                                      magic.startsWith("52494646") // WEBP
+
+                    if (!isLikelyImage) {
+                        // If it's not a known header, but we decoded it as a bitmap, it should be fine.
+                        // But if it's the raw copy that's not a known image, we warn.
+                    }
+
                     val requestFile = file.asRequestBody("image/jpeg".toMediaTypeOrNull())
-                    MultipartBody.Part.createFormData("image", file.name, requestFile)
+                    MultipartBody.Part.createFormData("images", file.name, requestFile)
                 }
                 
                 val layoutBody = layout.toRequestBody("text/plain".toMediaTypeOrNull())
@@ -63,23 +90,25 @@ class PassportViewModel : ViewModel() {
                 val responseCode = response.code()
                 val rawBody = if (response.isSuccessful) response.body()?.string() else response.errorBody()?.string()
                 
-                if (response.isSuccessful && rawBody != null) {
-                    try {
-                        val adapter = moshi.adapter(UploadResponse::class.java)
-                        val uploadResponse = adapter.fromJson(rawBody)
-                        if (uploadResponse?.success == true) {
-                            _uiState.value = UiState.Success
-                        } else {
-                            val errorMsg = uploadResponse?.message ?: uploadResponse?.error ?: "Server reported failure"
-                            _uiState.value = UiState.Error("Server: $errorMsg")
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    if (response.isSuccessful && rawBody != null) {
+                        try {
+                            val adapter = moshi.adapter(UploadResponse::class.java)
+                            val uploadResponse = adapter.fromJson(rawBody)
+                            if (uploadResponse?.success == true) {
+                                _uiState.value = UiState.Success
+                            } else {
+                                val errorMsg = uploadResponse?.message ?: uploadResponse?.error ?: "Server reported failure"
+                                _uiState.value = UiState.Error("Server: $errorMsg")
+                            }
+                        } catch (e: Exception) {
+                            val snippet = if (rawBody.length > 200) rawBody.substring(0, 200) + "..." else rawBody
+                            _uiState.value = UiState.Error("JSON Parse Error. Server sent: $snippet")
                         }
-                    } catch (e: Exception) {
-                        val snippet = if (rawBody.length > 200) rawBody.substring(0, 200) + "..." else rawBody
-                        _uiState.value = UiState.Error("JSON Parse Error. Server sent: $snippet")
+                    } else {
+                        val snippet = if ((rawBody?.length ?: 0) > 200) rawBody?.substring(0, 200) + "..." else rawBody
+                        _uiState.value = UiState.Error("Server Error ($responseCode): ${snippet ?: "No details"}")
                     }
-                } else {
-                    val snippet = if ((rawBody?.length ?: 0) > 200) rawBody?.substring(0, 200) + "..." else rawBody
-                    _uiState.value = UiState.Error("Server Error ($responseCode): ${snippet ?: "No details"}")
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -90,7 +119,9 @@ class PassportViewModel : ViewModel() {
                     e.message?.contains("Json") == true -> "Server returned malformed data (likely HTML error page)"
                     else -> "${e.javaClass.simpleName}: ${e.message}"
                 }
-                _uiState.value = UiState.Error("Network Error: $message")
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    _uiState.value = UiState.Error("Network Error: $message")
+                }
             }
         }
     }
@@ -100,18 +131,22 @@ class PassportViewModel : ViewModel() {
     }
 
     fun pingServer(context: android.content.Context) {
-        viewModelScope.launch {
-            _uiState.value = UiState.Loading
+        _uiState.value = UiState.Loading
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             try {
                 val response = apiService.ping()
-                if (response.isSuccessful) {
-                    _uiState.value = UiState.Idle
-                    android.widget.Toast.makeText(context, "Server is ONLINE", android.widget.Toast.LENGTH_SHORT).show()
-                } else {
-                    _uiState.value = UiState.Error("Server offline (${response.code()})")
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    if (response.isSuccessful) {
+                        _uiState.value = UiState.Idle
+                        android.widget.Toast.makeText(context, "Server is ONLINE", android.widget.Toast.LENGTH_SHORT).show()
+                    } else {
+                        _uiState.value = UiState.Error("Server offline (${response.code()})")
+                    }
                 }
             } catch (e: Exception) {
-                _uiState.value = UiState.Error("Connection Failed: ${e.message}")
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    _uiState.value = UiState.Error("Connection Failed: ${e.message}")
+                }
             }
         }
     }
@@ -119,37 +154,70 @@ class PassportViewModel : ViewModel() {
     private fun uriToFile(context: Context, uri: Uri, fileName: String): File {
         val file = File(context.cacheDir, fileName)
         try {
-            val options = android.graphics.BitmapFactory.Options().apply {
-                inPreferredConfig = android.graphics.Bitmap.Config.ARGB_8888
-            }
-            val inputStream = context.contentResolver.openInputStream(uri)
-            val bitmap = android.graphics.BitmapFactory.decodeStream(inputStream, null, options)
-            inputStream?.close()
-
-            if (bitmap != null) {
-                FileOutputStream(file).use { output ->
-                    // Use 100 quality for best results, or 90 to be safe
-                    val success = bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 95, output)
-                    if (!success) throw Exception("Bitmap compression failed")
+            if (file.exists()) file.delete()
+            
+            var bitmap: Bitmap? = null
+            try {
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+                    val source = android.graphics.ImageDecoder.createSource(context.contentResolver, uri)
+                    bitmap = android.graphics.ImageDecoder.decodeBitmap(source) { decoder, _, _ ->
+                        decoder.allocator = android.graphics.ImageDecoder.ALLOCATOR_SOFTWARE
+                    }
                 }
-                bitmap.recycle()
+            } catch (e: Exception) { e.printStackTrace() }
+
+            val finalBitmap = bitmap ?: run {
+                val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                context.contentResolver.openInputStream(uri)?.use { input ->
+                    BitmapFactory.decodeStream(input, null, options)
+                }
+                val sampleSize = calculateInSampleSize(options, 2048, 2048)
+                val decodeOptions = BitmapFactory.Options().apply {
+                    inSampleSize = sampleSize
+                    inPreferredConfig = Bitmap.Config.ARGB_8888
+                }
+                context.contentResolver.openInputStream(uri)?.use { input ->
+                    BitmapFactory.decodeStream(input, null, decodeOptions)
+                }
+            }
+
+            if (finalBitmap != null) {
+                FileOutputStream(file).use { output ->
+                    finalBitmap.compress(Bitmap.CompressFormat.JPEG, 90, output)
+                    output.flush()
+                }
+                finalBitmap.recycle()
             } else {
-                throw Exception("Could not decode image from Uri. Unsupported format?")
+                context.contentResolver.openInputStream(uri)?.use { input ->
+                    FileOutputStream(file).use { output ->
+                        input.copyTo(output)
+                    }
+                }
             }
         } catch (e: Exception) {
             e.printStackTrace()
-            // Last resort fallback: direct copy if it's already a JPEG/PNG
             try {
                 context.contentResolver.openInputStream(uri)?.use { input ->
                     FileOutputStream(file).use { output ->
                         input.copyTo(output)
                     }
                 }
-            } catch (e2: Exception) {
-                e2.printStackTrace()
-            }
+            } catch (e2: Exception) { e2.printStackTrace() }
         }
         return file
+    }
+
+    private fun calculateInSampleSize(options: android.graphics.BitmapFactory.Options, reqWidth: Int, reqHeight: Int): Int {
+        val (height: Int, width: Int) = options.outHeight to options.outWidth
+        var inSampleSize = 1
+        if (height > reqHeight || width > reqWidth) {
+            val halfHeight: Int = height / 2
+            val halfWidth: Int = width / 2
+            while (halfHeight / inSampleSize >= reqHeight && halfWidth / inSampleSize >= reqWidth) {
+                inSampleSize *= 2
+            }
+        }
+        return inSampleSize
     }
 
     sealed class UiState {
