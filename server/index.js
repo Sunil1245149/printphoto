@@ -103,8 +103,8 @@ app.post('/upload', (req, res, next) => {
         const processPhoto = async (filePath) => {
             console.log(`Processing file: ${filePath}`);
             if (!fs.existsSync(filePath)) {
-                console.error(`File NOT found: ${filePath}`);
-                throw new Error(`File not found on server: ${path.basename(filePath)}`);
+                console.error(`File NOT found on disk: ${filePath}`);
+                throw new Error(`File not found on server storage: ${path.basename(filePath)}`);
             }
 
             const stats = fs.statSync(filePath);
@@ -113,13 +113,13 @@ app.post('/upload', (req, res, next) => {
                 throw new Error(`File ${path.basename(filePath)} is empty (0 bytes)`);
             }
 
+            let buffer;
             try {
-                // Read into buffer to verify it's not a path issue
-                const buffer = await fs.readFile(filePath);
+                buffer = await fs.readFile(filePath);
                 const magic = buffer.slice(0, 8).toString('hex');
                 console.log(`Read ${buffer.length} bytes into buffer. Magic: ${magic}`);
-
-                const photo = await sharp(filePath) // Use path directly, usually more robust
+                
+                const photo = await sharp(buffer) // Use buffer for extra certainty
                     .rotate() // Respect EXIF orientation
                     .resize(pWidth, pHeight, { fit: 'cover' })
                     // Black border
@@ -129,7 +129,7 @@ app.post('/upload', (req, res, next) => {
                     })
                     .toBuffer();
                 
-                console.log(`Photo resized and bordered for ${filePath}`);
+                console.log(`Photo processed successfully: ${filePath}`);
 
                 const w = pWidth + (borderSize + gapSize) * 2;
                 const h = pHeight + (borderSize + gapSize) * 2;
@@ -150,11 +150,10 @@ app.post('/upload', (req, res, next) => {
                 ])
                 .toBuffer();
             } catch (e) {
-                console.error('Error in processPhoto:', e);
-                const buffer = await fs.readFile(filePath).catch(() => null);
-                const magic = buffer ? buffer.slice(0, 16).toString('hex') : 'n/a';
+                console.error('Error in processPhoto details:', e);
+                const magicHex = buffer ? buffer.slice(0, 16).toString('hex') : 'n/a';
                 const fileRecord = (req.files || []).find(f => f.path === filePath) || {};
-                throw new Error(`Processing failed for ${path.basename(filePath)}: ${e.message} (Mimetype: ${fileRecord.mimetype}, Magic: ${magic}, Size: ${buffer ? buffer.length : 'n/a'})`);
+                throw new Error(`Processing failed for ${path.basename(filePath)}: ${e.message} (Mimetype: ${fileRecord.mimetype}, Magic: ${magicHex}, Size: ${buffer ? buffer.length : 'n/a'})`);
             }
         };
 
