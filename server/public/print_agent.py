@@ -53,15 +53,23 @@ def on_job_completed(data):
         print(f"Error during printing: {e}")
 
 def start_agent():
-    try:
-        sio.connect(SERVER_URL)
-        sio.wait()
-    except Exception as e:
-        print(f"Connection failed: {e}")
-        time.sleep(5)
-        start_agent()
+    while True:
+        try:
+            print(f"Connecting to {SERVER_URL}...")
+            sio.connect(SERVER_URL)
+            sio.wait()
+        except Exception as e:
+            print(f"Connection error or lost: {e}")
+            print("Retrying in 10 seconds...")
+            time.sleep(10)
 
 if __name__ == "__main__":
     print("--- PassportPrint Pro Auto-Print Agent ---")
     print(f"Monitoring: {SERVER_URL}")
-    start_agent()
+    try:
+        start_agent()
+    except KeyboardInterrupt:
+        print("\nAgent stopped by user.")
+    except Exception as e:
+        print(f"Critical error: {e}")
+        input("Press Enter to close...")

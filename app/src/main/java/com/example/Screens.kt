@@ -284,50 +284,33 @@ fun CameraScreen(
             }
         }
 
-        // Zoom Controls
+        // Zoom Slider (Above Capture Button)
         Column(
             modifier = Modifier
-                .align(Alignment.CenterEnd)
-                .padding(end = 24.dp, bottom = 220.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 150.dp, start = 48.dp, end = 48.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            IconButton(
-                onClick = {
-                    if (zoomRatio < 5f) {
-                        zoomRatio += 0.5f
-                        camera?.cameraControl?.setZoomRatio(zoomRatio)
-                    }
+            Text(
+                text = "Zoom: ${"%.1f".format(zoomRatio)}x",
+                color = Color.White,
+                style = MaterialTheme.typography.labelSmall,
+                modifier = Modifier.background(Color.Black.copy(0.4f), RoundedCornerShape(4.dp)).padding(horizontal = 8.dp)
+            )
+            Slider(
+                value = zoomRatio,
+                onValueChange = {
+                    zoomRatio = it
+                    camera?.cameraControl?.setZoomRatio(it)
                 },
-                modifier = Modifier.background(Color.Black.copy(alpha = 0.3f), CircleShape)
-            ) {
-                Icon(Icons.Default.Add, contentDescription = "Zoom In", tint = Color.White)
-            }
-
-            Box(
-                modifier = Modifier
-                    .background(Color.Black.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
-                    .padding(horizontal = 8.dp, vertical = 4.dp)
-            ) {
-                Text(
-                    text = "${"%.1f".format(zoomRatio)}x",
-                    color = Color.White,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold
+                valueRange = 1f..5f,
+                modifier = Modifier.fillMaxWidth(),
+                colors = SliderDefaults.colors(
+                    thumbColor = Color.White,
+                    activeTrackColor = Color.White,
+                    inactiveTrackColor = Color.White.copy(alpha = 0.3f)
                 )
-            }
-
-            IconButton(
-                onClick = {
-                    if (zoomRatio > 1f) {
-                        zoomRatio -= 0.5f
-                        camera?.cameraControl?.setZoomRatio(zoomRatio)
-                    }
-                },
-                modifier = Modifier.background(Color.Black.copy(alpha = 0.3f), CircleShape)
-            ) {
-                Icon(Icons.Default.Remove, contentDescription = "Zoom Out", tint = Color.White)
-            }
+            )
         }
 
         // Capture Button
@@ -453,10 +436,15 @@ fun PreviewScreen(
                 modifier = Modifier.weight(1f)
             )
             LayoutOption(
-                label = "2x4 (8 Pcs)",
-                icon = Icons.Default.Filter2,
+                label = "4+4 Mix",
+                icon = Icons.Default.LibraryAdd,
                 isSelected = selectedLayout == "2x4",
-                onClick = { selectedLayout = "2x4" },
+                onClick = { 
+                    selectedLayout = "2x4"
+                    if (photoUris.size < 2) {
+                        onAddMore()
+                    }
+                },
                 modifier = Modifier.weight(1f)
             )
         }
@@ -584,26 +572,25 @@ fun DashboardCard(
 ) {
     Surface(
         onClick = onClick,
-        modifier = modifier.height(140.dp),
-        shape = RoundedCornerShape(24.dp),
+        modifier = modifier.height(110.dp),
+        shape = RoundedCornerShape(20.dp),
         color = color
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.SpaceBetween
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.Center
         ) {
             Box(
                 modifier = Modifier
-                    .size(40.dp)
+                    .size(32.dp)
                     .background(Color.White.copy(alpha = 0.5f), CircleShape),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(icon, contentDescription = null, tint = Color.Black.copy(alpha = 0.7f), modifier = Modifier.size(20.dp))
+                Icon(icon, contentDescription = null, tint = Color.Black.copy(alpha = 0.7f), modifier = Modifier.size(18.dp))
             }
-            Column {
-                Text(title, fontWeight = FontWeight.Bold, color = Color.Black, style = MaterialTheme.typography.bodySmall)
-                Text(subtitle, style = MaterialTheme.typography.labelSmall, color = Color.Black.copy(alpha = 0.6f))
-            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(title, fontWeight = FontWeight.Bold, color = Color.Black, style = MaterialTheme.typography.titleSmall)
+            Text(subtitle, style = MaterialTheme.typography.labelSmall, color = Color.Black.copy(alpha = 0.6f))
         }
     }
 }

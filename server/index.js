@@ -222,14 +222,18 @@ const uploadHandler = [
             const fullW = pWidth + (borderSize + gapSize) * 2;
             const fullH = pHeight + (borderSize + gapSize) * 2;
             
-            const marginX = (sheetWidth - (fullW * 4)) / 2;
-            const marginY = (sheetHeight - (fullH * 2)) / 2;
+            // On 1800x1200 (6x4 Landscape)
+            // We can fit 4 photos across (4 * ~450 = 1800)
+            // And 2 photos down (2 * ~550 = 1100)
+            const marginX = Math.max(10, (sheetWidth - (fullW * 4)) / 2);
+            const marginY = Math.max(10, (sheetHeight - (fullH * 2)) / 2);
+            const interGap = 20;
 
             for (let i = 0; i < 4; i++) {
-                compositeArr.push({ input: photo1, top: marginY, left: marginX + i * fullW });
+                compositeArr.push({ input: photo1, top: marginY, left: marginX + i * (fullW + interGap/4) });
             }
             for (let i = 0; i < 4; i++) {
-                compositeArr.push({ input: photo2, top: marginY + fullH, left: marginX + i * fullW });
+                compositeArr.push({ input: photo2, top: marginY + fullH + interGap, left: marginX + i * (fullW + interGap/4) });
             }
 
             finalOutput = sharp({
