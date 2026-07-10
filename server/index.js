@@ -116,9 +116,11 @@ app.post('/upload', (req, res, next) => {
             try {
                 // Read into buffer to verify it's not a path issue
                 const buffer = await fs.readFile(filePath);
-                console.log(`Read ${buffer.length} bytes into buffer. First 4 bytes: ${buffer.slice(0, 4).toString('hex')}`);
+                const magic = buffer.slice(0, 8).toString('hex');
+                console.log(`Read ${buffer.length} bytes into buffer. Magic: ${magic}`);
 
-                const photo = await sharp(buffer)
+                const photo = await sharp(filePath) // Use path directly, usually more robust
+                    .rotate() // Respect EXIF orientation
                     .resize(pWidth, pHeight, { fit: 'cover' })
                     // Black border
                     .extend({
@@ -149,7 +151,10 @@ app.post('/upload', (req, res, next) => {
                 .toBuffer();
             } catch (e) {
                 console.error('Error in processPhoto:', e);
-                throw e;
+                const buffer = await fs.readFile(filePath).catch(() => null);
+                const magic = buffer ? buffer.slice(0, 16).toString('hex') : 'n/a';
+                const fileRecord = (req.files || []).find(f => f.path === filePath) || {};
+                throw new Error(`Processing failed for ${path.basename(filePath)}: ${e.message} (Mimetype: ${fileRecord.mimetype}, Magic: ${magic}, Size: ${buffer ? buffer.length : 'n/a'})`);
             }
         };
 
