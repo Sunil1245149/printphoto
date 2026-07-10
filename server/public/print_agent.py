@@ -1,12 +1,22 @@
 
-import socketio
-import requests
+try:
+    import socketio
+    import requests
+except ImportError:
+    print("\n[ERROR] Missing required libraries!")
+    print("Please run this command first:")
+    print("pip install \"python-socketio[client]\" requests")
+    input("\nPress Enter to exit...")
+    exit(1)
+
 import os
 import subprocess
 import time
 
 # Configuration
-SERVER_URL = input("Enter Portal URL (default: https://printphoto.onrender.com): ") or "https://printphoto.onrender.com"
+DEFAULT_URL = "https://ais-pre-cqh5itcyojkioxx6udfd4o-1072374194741.asia-southeast1.run.app"
+print(f"Default URL: {DEFAULT_URL}")
+SERVER_URL = input(f"Enter Portal URL (Press Enter for default): ") or DEFAULT_URL
 DOWNLOAD_DIR = "downloads"
 
 if SERVER_URL.endswith('/'):
