@@ -229,8 +229,8 @@ const uploadHandler = [
             const fullH = pHeight + (borderSize + gapSize) * 2;
             
             // On 1800x1200 (6x4 Landscape)
-            const interGapX = 30; // Increased
-            const interGapY = 50; // Increased
+            const interGapX = 15; 
+            const interGapY = 40; 
             const totalW = (fullW * 4) + (interGapX * 3);
             const totalH = (fullH * 2) + interGapY;
 
@@ -255,13 +255,21 @@ const uploadHandler = [
             // 4x6 inches at 300 DPI is 1200x1800 or 1800x1200
             const targetW = isLandscape ? 1800 : 1200;
             const targetH = isLandscape ? 1200 : 1800;
+            const margin = 40; // Small uniform margin (approx 3.4mm)
 
             finalOutput = sharp(photoBuffer)
                 .rotate()
-                .resize(targetW, targetH, { 
+                .resize(targetW - (margin * 2), targetH - (margin * 2), { 
                     fit: 'contain', 
                     background: { r: 255, g: 255, b: 255, alpha: 1 },
                     kernel: sharp.kernel.lanczos3
+                })
+                .extend({
+                    top: margin,
+                    bottom: margin,
+                    left: margin,
+                    right: margin,
+                    background: { r: 255, g: 255, b: 255, alpha: 1 }
                 })
                 .sharpen({
                     sigma: 1.2,
@@ -275,8 +283,8 @@ const uploadHandler = [
             const fullW = pWidth + (borderSize + gapSize) * 2;
             const fullH = pHeight + (borderSize + gapSize) * 2;
             
-            const interGapX = 30; // Increased
-            const interGapY = 50; // Increased
+            const interGapX = 15; 
+            const interGapY = 40; 
             const totalW = (fullW * 4) + (interGapX * 3);
             const totalH = (fullH * 2) + interGapY;
 
