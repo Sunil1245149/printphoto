@@ -233,37 +233,45 @@
         #manualUpload { display: none; }
 
         @media print {
-            body {
+            html, body {
                 background: white !important;
                 margin: 0 !important;
                 padding: 0 !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
             }
-            .container, header, .card:not(.preview-card), .card h3, #job-details, .preview-actions {
+            .container, header, .card:not(.preview-card), .card h3, #job-details, .preview-actions, .server-status, .lang-switcher {
                 display: none !important;
             }
             .main-grid {
                 display: block !important;
-                padding: 0 !important;
                 margin: 0 !important;
+                padding: 0 !important;
             }
-            .preview-container, .preview-card {
+            .preview-container, .preview-card, #preview-area {
                 position: absolute !important;
                 left: 0 !important;
                 top: 0 !important;
                 width: 100% !important;
+                height: auto !important;
                 margin: 0 !important;
                 padding: 0 !important;
                 box-shadow: none !important;
                 border: none !important;
+                background: white !important;
             }
             #live-preview {
                 width: 100% !important;
                 max-width: 100% !important;
                 height: auto !important;
+                display: block !important;
+                margin: 0 auto !important;
                 box-shadow: none !important;
                 border-radius: 0 !important;
-                margin: 0 !important;
-                padding: 0 !important;
+                background: white !important;
+                filter: none !important;
+                -webkit-filter: none !important;
+                object-fit: contain !important;
             }
         }
     </style>
@@ -484,18 +492,27 @@
         function updatePreview(job, autoPrint = false) {
             document.getElementById('job-details').style.display = 'block';
             document.getElementById('job-id-label').innerText = `JOB #${job.id.toString().slice(-4)}`;
-            previewArea.innerHTML = `<img id="live-preview" src="${job.preview}" alt="Live Preview">`;
+            
+            // Re-create image to ensure fresh load for print
+            const previewArea = document.getElementById('preview-area');
+            previewArea.innerHTML = '';
+            
+            const img = document.createElement('img');
+            img.id = 'live-preview';
+            // Add timestamp to bypass any cache
+            img.src = job.preview + '?t=' + Date.now();
+            img.alt = "Live Preview";
             
             if (autoPrint) {
-                const img = document.getElementById('live-preview');
-                if (img) {
-                    img.onload = () => {
-                        setTimeout(() => {
-                            window.print();
-                        }, 500);
-                    };
-                }
+                img.onload = () => {
+                    console.log("Image loaded, preparing to print...");
+                    setTimeout(() => {
+                        window.print();
+                    }, 800); // 800ms to be safe
+                };
             }
+            
+            previewArea.appendChild(img);
         }
 
         function refreshHistory() {

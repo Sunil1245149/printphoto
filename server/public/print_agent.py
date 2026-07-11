@@ -41,7 +41,7 @@ def main():
     # CONFIGURATION
     # ---------------------------------------------------------
     # Note: Replace this with your actual Render URL if you have one
-    DEFAULT_URL = "https://print-portal-julc.onrender.com"
+    DEFAULT_URL = "https://printphoto.onrender.com"
     
     script_dir = os.path.dirname(os.path.abspath(__file__))
     DOWNLOAD_DIR = os.path.join(script_dir, "print_jobs")
