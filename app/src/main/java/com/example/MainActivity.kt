@@ -74,7 +74,14 @@ fun MainNavigation(voiceManager: VoiceManager) {
         }
     }
 
-    NavHost(navController = navController, startDestination = "home") {
+    NavHost(navController = navController, startDestination = "splash") {
+        composable("splash") {
+            SplashScreen(onFinished = {
+                navController.navigate("home") {
+                    popUpTo("splash") { inclusive = true }
+                }
+            })
+        }
         composable("home") {
             HomeScreen(
                 selectedLanguage = selectedLanguage,
@@ -93,9 +100,11 @@ fun MainNavigation(voiceManager: VoiceManager) {
                 onPortalClick = {
                     // Portal is now a web portal hosted on Render
                 },
-                onGalleryClick = { uri ->
-                    photoUris = listOf(uri to false) // Gallery = false
-                    navController.navigate("preview")
+                onGalleryClick = { uris ->
+                    photoUris = photoUris + uris.map { it to false }
+                    if (photoUris.isNotEmpty()) {
+                        navController.navigate("preview")
+                    }
                 },
                 onPingClick = {
                     viewModel.pingServer(context)

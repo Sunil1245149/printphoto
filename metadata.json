@@ -1,5 +1,5 @@
 {
-  "name": "Passport Print",
+  "name": "Passport Pro",
   "description": "Production-ready passport photo capture and printing system. Capture, select 4/8 layouts, and print instantly.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]

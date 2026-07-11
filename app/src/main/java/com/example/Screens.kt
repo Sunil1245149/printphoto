@@ -1,5 +1,6 @@
 package com.example
 
+import com.example.R
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -38,18 +39,74 @@ import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
 @Composable
+fun SplashScreen(onFinished: () -> Unit) {
+    LaunchedEffect(Unit) {
+        kotlinx.coroutines.delay(2000)
+        onFinished()
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        // Splash Background
+        Image(
+            painter = painterResource(id = R.drawable.img_splash_bg_1783778127001),
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop
+        )
+
+        // Overlay with Logo
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Card(
+                modifier = Modifier
+                    .size(140.dp)
+                    .shadow(12.dp, CircleShape),
+                shape = CircleShape,
+                colors = CardDefaults.cardColors(containerColor = Color.White)
+            ) {
+                Image(
+                    painter = painterResource(id = R.drawable.img_app_icon_asset_1783778112250),
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize().padding(20.dp),
+                    contentScale = ContentScale.Fit
+                )
+            }
+            Spacer(modifier = Modifier.height(24.dp))
+            Text(
+                text = "Passport Pro",
+                fontSize = 32.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White,
+                style = MaterialTheme.typography.headlineLarge
+            )
+            Text(
+                text = "Studio Quality in Your Pocket",
+                fontSize = 16.sp,
+                color = Color.White.copy(alpha = 0.8f),
+                style = MaterialTheme.typography.bodyMedium
+            )
+        }
+    }
+}
+
+@Composable
 fun HomeScreen(
     selectedLanguage: String,
     onLanguageChange: (String) -> Unit,
     onCaptureClick: () -> Unit,
     onPortalClick: () -> Unit,
-    onGalleryClick: (Uri) -> Unit,
+    onGalleryClick: (List<Uri>) -> Unit,
     onPingClick: () -> Unit = {}
 ) {
     val launcher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
-    ) { uri ->
-        uri?.let { onGalleryClick(it) }
+        contract = ActivityResultContracts.GetMultipleContents()
+    ) { uris ->
+        if (uris.isNotEmpty()) {
+            onGalleryClick(uris)
+        }
     }
 
     Scaffold(
@@ -70,14 +127,19 @@ fun HomeScreen(
                     ) {
                         Box(
                             modifier = Modifier
-                                .size(36.dp)
-                                .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(10.dp)),
+                                .size(40.dp)
+                                .clip(RoundedCornerShape(10.dp)),
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(Icons.Default.Print, contentDescription = null, tint = Color.White, modifier = Modifier.size(22.dp))
+                            Image(
+                                painter = painterResource(id = R.drawable.img_app_icon_asset_1783778112250),
+                                contentDescription = null,
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Fit
+                            )
                         }
                         Text(
-                            text = "PassportPrint Pro",
+                            text = "Passport Pro",
                             style = MaterialTheme.typography.titleMedium.copy(
                                 fontWeight = FontWeight.ExtraBold,
                                 letterSpacing = (-0.5).sp
@@ -424,24 +486,24 @@ fun PreviewScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(vertical = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             LayoutOption(
-                label = "4 Photos",
+                label = "4 Pcs",
                 icon = Icons.Default.Grid4x4,
                 isSelected = selectedLayout == "4",
                 onClick = { selectedLayout = "4" },
                 modifier = Modifier.weight(1f)
             )
             LayoutOption(
-                label = "8 Photos",
+                label = "8 Pcs",
                 icon = Icons.Default.GridView,
                 isSelected = selectedLayout == "8",
                 onClick = { selectedLayout = "8" },
                 modifier = Modifier.weight(1f)
             )
             LayoutOption(
-                label = "4+4 Mix",
+                label = "Mix",
                 icon = Icons.Default.LibraryAdd,
                 isSelected = selectedLayout == "2x4",
                 onClick = { 
@@ -450,6 +512,13 @@ fun PreviewScreen(
                         onAddMore()
                     }
                 },
+                modifier = Modifier.weight(1f)
+            )
+            LayoutOption(
+                label = "Full",
+                icon = Icons.Default.FilterFrames,
+                isSelected = selectedLayout == "Single",
+                onClick = { selectedLayout = "Single" },
                 modifier = Modifier.weight(1f)
             )
         }
@@ -462,9 +531,9 @@ fun PreviewScreen(
                 modifier = Modifier.fillMaxWidth().height(56.dp),
                 shape = RoundedCornerShape(16.dp)
             ) {
-                Icon(Icons.Default.AddAPhoto, contentDescription = null)
+                Icon(Icons.Default.Add, contentDescription = null)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Capture Second Photo")
+                Text("Add Second Photo")
             }
             Spacer(modifier = Modifier.height(16.dp))
         }

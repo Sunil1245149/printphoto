@@ -5,6 +5,20 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
     <path
-        android:fillColor="#0D47A1"
-        android:pathData="M0,0h108v108h-108z" />
+        android:pathData="M0,0h108v108h-108z"
+        android:fillColor="#F0F4F8"/> <!-- Soft light blue/grey background -->
+    <path
+        android:pathData="M0,0h108v108h-108z">
+        <aapt:attr name="android:fillColor" xmlns:aapt="http://schemas.android.com/apk/res/android">
+            <gradient
+                android:startX="0"
+                android:startY="0"
+                android:endX="108"
+                android:endY="108"
+                android:type="linear">
+                <item android:offset="0" android:color="#E1E8F0" />
+                <item android:offset="1" android:color="#D1D9E6" />
+            </gradient>
+        </aapt:attr>
+    </path>
 </vector>

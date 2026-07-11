@@ -92,7 +92,7 @@ const uploadHandler = [
             const pWidth = 413; // 3.5cm
             const pHeight = 531; // 4.5cm
             const borderSize = 2;
-            const gapSize = 8; 
+            const gapSize = 10; // Increased slightly
 
             // Helper to process a single photo
             const processPhoto = async (file) => {
@@ -129,7 +129,13 @@ const uploadHandler = [
                         .rotate()
                         .resize(pWidth, pHeight, { 
                             fit: 'cover',
-                            withoutEnlargement: false
+                            withoutEnlargement: false,
+                            kernel: sharp.kernel.lanczos3
+                        })
+                        .sharpen({
+                            sigma: 1.0,
+                            m1: 2,
+                            m2: 10
                         })
                         .extend({
                             top: borderSize, bottom: borderSize, left: borderSize, right: borderSize,
@@ -223,8 +229,8 @@ const uploadHandler = [
             const fullH = pHeight + (borderSize + gapSize) * 2;
             
             // On 1800x1200 (6x4 Landscape)
-            const interGapX = 10;
-            const interGapY = 30;
+            const interGapX = 30; // Increased
+            const interGapY = 50; // Increased
             const totalW = (fullW * 4) + (interGapX * 3);
             const totalH = (fullH * 2) + interGapY;
 
@@ -241,13 +247,31 @@ const uploadHandler = [
             finalOutput = sharp({
                 create: { width: 1800, height: 1200, channels: 4, background: { r: 255, g: 255, b: 255, alpha: 1 } }
             });
+        } else if (layout === "Single") {
+            const photoBuffer = await fs.readFile(files[0].path);
+            const metadata = await sharp(photoBuffer).metadata();
+            const isLandscape = (metadata.width || 0) > (metadata.height || 0);
+            
+            // For Single, we don't use the small pWidth/pHeight processed version
+            // We resize the original to fill the 4x6 sheet
+            const targetW = isLandscape ? 1800 : 1200;
+            const targetH = isLandscape ? 1200 : 1800;
+
+            finalOutput = sharp(photoBuffer)
+                .rotate()
+                .resize(targetW, targetH, { 
+                    fit: 'contain', 
+                    background: { r: 255, g: 255, b: 255, alpha: 1 } 
+                });
+            
+            compositeArr = []; 
         } else {
             const photo = processedPhotos[0];
             const fullW = pWidth + (borderSize + gapSize) * 2;
             const fullH = pHeight + (borderSize + gapSize) * 2;
             
-            const interGapX = 10;
-            const interGapY = 30;
+            const interGapX = 30; // Increased
+            const interGapY = 50; // Increased
             const totalW = (fullW * 4) + (interGapX * 3);
             const totalH = (fullH * 2) + interGapY;
 

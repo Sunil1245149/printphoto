@@ -514,8 +514,11 @@
             if (autoPrint) {
                 img.onload = () => {
                     console.log("Preparing to print via Iframe...");
-                    // Auto-select orientation: "8" layout is 4x6 landscape, "4" is standard portrait
-                    const orientation = (job.layout === "8" || job.layout === "2x4") ? "landscape" : "portrait";
+                    // Auto-select orientation
+                    let orientation = (job.layout === "8" || job.layout === "2x4") ? "landscape" : "portrait";
+                    if (job.layout === "Single") {
+                        orientation = (img.naturalWidth > img.naturalHeight) ? "landscape" : "portrait";
+                    }
                     printViaIframe(freshUrl, orientation);
                 };
             }
@@ -556,8 +559,15 @@
 
         function manualPrint() {
             if (!currentJob) return;
+            const img = document.getElementById('live-preview');
             const freshUrl = currentJob.preview + '?t=' + Date.now();
-            const orientation = (currentJob.layout === "8" || currentJob.layout === "2x4") ? "landscape" : "portrait";
+            
+            let orientation = (currentJob.layout === "8" || currentJob.layout === "2x4") ? "landscape" : "portrait";
+            if (currentJob.layout === "Single") {
+                if (img && img.naturalWidth) {
+                    orientation = (img.naturalWidth > img.naturalHeight) ? "landscape" : "portrait";
+                }
+            }
             printViaIframe(freshUrl, orientation);
         }
 
