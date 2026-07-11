@@ -252,8 +252,7 @@ const uploadHandler = [
             const metadata = await sharp(photoBuffer).metadata();
             const isLandscape = (metadata.width || 0) > (metadata.height || 0);
             
-            // For Single, we don't use the small pWidth/pHeight processed version
-            // We resize the original to fill the 4x6 sheet
+            // 4x6 inches at 300 DPI is 1200x1800 or 1800x1200
             const targetW = isLandscape ? 1800 : 1200;
             const targetH = isLandscape ? 1200 : 1800;
 
@@ -261,7 +260,13 @@ const uploadHandler = [
                 .rotate()
                 .resize(targetW, targetH, { 
                     fit: 'contain', 
-                    background: { r: 255, g: 255, b: 255, alpha: 1 } 
+                    background: { r: 255, g: 255, b: 255, alpha: 1 },
+                    kernel: sharp.kernel.lanczos3
+                })
+                .sharpen({
+                    sigma: 1.2,
+                    m1: 2,
+                    m2: 15
                 });
             
             compositeArr = []; 
