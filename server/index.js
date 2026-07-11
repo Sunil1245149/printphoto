@@ -92,7 +92,7 @@ const uploadHandler = [
             const pWidth = 413; // 3.5cm
             const pHeight = 531; // 4.5cm
             const borderSize = 2;
-            const gapSize = 10; // Increased slightly
+            const gapSize = 6; 
 
             // Helper to process a single photo
             const processPhoto = async (file) => {
@@ -229,13 +229,13 @@ const uploadHandler = [
             const fullH = pHeight + (borderSize + gapSize) * 2;
             
             // On 1800x1200 (6x4 Landscape)
-            const interGapX = 15; 
-            const interGapY = 40; 
+            const interGapX = 10; 
+            const interGapY = 30; 
             const totalW = (fullW * 4) + (interGapX * 3);
             const totalH = (fullH * 2) + interGapY;
 
-            const marginX = Math.max(10, (sheetWidth - totalW) / 2);
-            const marginY = Math.max(10, (sheetHeight - totalH) / 2);
+            const marginX = Math.floor((sheetWidth - totalW) / 2);
+            const marginY = Math.floor((sheetHeight - totalH) / 2);
 
             for (let i = 0; i < 4; i++) {
                 compositeArr.push({ input: photo1, top: marginY, left: marginX + i * (fullW + interGapX) });
@@ -255,12 +255,12 @@ const uploadHandler = [
             // 4x6 inches at 300 DPI is 1200x1800 or 1800x1200
             const targetW = isLandscape ? 1800 : 1200;
             const targetH = isLandscape ? 1200 : 1800;
-            const margin = 40; // Small uniform margin (approx 3.4mm)
+            const margin = 25; // Smaller uniform margin (approx 2mm)
 
             finalOutput = sharp(photoBuffer)
                 .rotate()
                 .resize(targetW - (margin * 2), targetH - (margin * 2), { 
-                    fit: 'contain', 
+                    fit: 'cover', 
                     background: { r: 255, g: 255, b: 255, alpha: 1 },
                     kernel: sharp.kernel.lanczos3
                 })
@@ -283,13 +283,13 @@ const uploadHandler = [
             const fullW = pWidth + (borderSize + gapSize) * 2;
             const fullH = pHeight + (borderSize + gapSize) * 2;
             
-            const interGapX = 15; 
-            const interGapY = 40; 
+            const interGapX = 10; 
+            const interGapY = 30; 
             const totalW = (fullW * 4) + (interGapX * 3);
             const totalH = (fullH * 2) + interGapY;
 
-            const marginX = Math.max(10, (sheetWidth - totalW) / 2);
-            const marginY = Math.max(10, (sheetHeight - totalH) / 2);
+            const marginX = Math.floor((sheetWidth - totalW) / 2);
+            const marginY = Math.floor((sheetHeight - totalH) / 2);
 
             for (let row = 0; row < 2; row++) {
                 for (let col = 0; col < 4; col++) {
