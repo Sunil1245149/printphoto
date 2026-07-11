@@ -389,7 +389,7 @@
 
         socket.on('job-completed', (job) => {
             if (voiceEnabled) speak("Printing ready");
-            updatePreview(job);
+            updatePreview(job, true);
             refreshHistory();
         });
 
@@ -481,10 +481,21 @@
             historyList.appendChild(createJobElement(job));
         }
 
-        function updatePreview(job) {
+        function updatePreview(job, autoPrint = false) {
             document.getElementById('job-details').style.display = 'block';
             document.getElementById('job-id-label').innerText = `JOB #${job.id.toString().slice(-4)}`;
             previewArea.innerHTML = `<img id="live-preview" src="${job.preview}" alt="Live Preview">`;
+            
+            if (autoPrint) {
+                const img = document.getElementById('live-preview');
+                if (img) {
+                    img.onload = () => {
+                        setTimeout(() => {
+                            window.print();
+                        }, 500);
+                    };
+                }
+            }
         }
 
         function refreshHistory() {

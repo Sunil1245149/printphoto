@@ -291,7 +291,6 @@ const uploadHandler = [
         history.unshift(job);
         if (history.length > 50) history.pop();
 
-        triggerAutoPrint(outputPath);
         io.emit('job-completed', job);
 
         res.status(200).json({ success: true, jobId: timestamp });
@@ -309,12 +308,6 @@ app.use((err, req, res, next) => {
     console.error('GLOBAL ERROR:', err);
     res.status(500).json({ error: 'Internal Server Error', details: err.message });
 });
-
-function triggerAutoPrint(filePath) {
-    const publicUrl = `/outputs/${path.basename(filePath)}`;
-    console.log(`Auto-printing: ${publicUrl}`);
-    io.emit('print_job', { url: publicUrl });
-}
 
 app.get('/settings', (req, res) => {
     const settings = fs.readJsonSync(settingsFile);
