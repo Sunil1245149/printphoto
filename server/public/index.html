@@ -360,6 +360,9 @@
         </div>
     </div>
 
+    <!-- Hidden iframe for reliable printing -->
+    <iframe id="print-iframe" style="position: absolute; width: 0; height: 0; border: none;"></iframe>
+
     <script>
         const socket = io();
         let voiceEnabled = true;
@@ -493,26 +496,51 @@
             document.getElementById('job-details').style.display = 'block';
             document.getElementById('job-id-label').innerText = `JOB #${job.id.toString().slice(-4)}`;
             
-            // Re-create image to ensure fresh load for print
             const previewArea = document.getElementById('preview-area');
             previewArea.innerHTML = '';
             
             const img = document.createElement('img');
             img.id = 'live-preview';
-            // Add timestamp to bypass any cache
-            img.src = job.preview + '?t=' + Date.now();
+            const freshUrl = job.preview + '?t=' + Date.now();
+            img.src = freshUrl;
             img.alt = "Live Preview";
             
             if (autoPrint) {
                 img.onload = () => {
-                    console.log("Image loaded, preparing to print...");
-                    setTimeout(() => {
-                        window.print();
-                    }, 800); // 800ms to be safe
+                    console.log("Preparing to print via Iframe...");
+                    printViaIframe(freshUrl);
                 };
             }
             
             previewArea.appendChild(img);
+        }
+
+        function printViaIframe(url) {
+            const iframe = document.getElementById('print-iframe');
+            const doc = iframe.contentWindow.document;
+            
+            doc.open();
+            doc.write(`
+                <html>
+                    <head>
+                        <title>Print</title>
+                        <style>
+                            body, html { margin: 0; padding: 0; background: white !important; }
+                            img { width: 100%; height: auto; display: block; }
+                            @page { margin: 0; size: auto; }
+                        </style>
+                    </head>
+                    <body>
+                        <img src="${url}" onload="window.print();">
+                    </body>
+                </html>
+            `);
+            doc.close();
+            
+            // Fallback if onload doesn't trigger in some browsers
+            setTimeout(() => {
+                iframe.contentWindow.focus();
+            }, 500);
         }
 
         function refreshHistory() {

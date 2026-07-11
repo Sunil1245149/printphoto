@@ -184,29 +184,48 @@ class PassportViewModel : ViewModel() {
                 // We need to crop the oriented bitmap based on the 0.65 box width
                 // But we must account for the fact that the camera might be 4:3 while screen is 20:9
                 
-                val frameWidth = (oriented.width * 0.65f).toInt()
-                val frameHeight = (frameWidth * 4.5f / 3.5f).toInt()
+                // Precise cropping based on screen aspect ratio vs image aspect ratio
+                val metrics = context.resources.displayMetrics
+                val screenW = metrics.widthPixels.toFloat()
+                val screenH = metrics.heightPixels.toFloat()
                 
-                // If frameHeight is larger than bitmap height (e.g. landscape), scale down
-                var finalFrameW = frameWidth
-                var finalFrameH = frameHeight
-                if (finalFrameH > oriented.height) {
-                    finalFrameH = oriented.height
-                    finalFrameW = (finalFrameH * 3.5f / 4.5f).toInt()
-                }
+                val imgW = oriented.width.toFloat()
+                val imgH = oriented.height.toFloat()
                 
-                val frameLeft = (oriented.width - finalFrameW) / 2
-                val frameTop = (oriented.height - finalFrameH) / 3 // Same 1/3 bias
+                // Since PreviewView is FILL_CENTER, it scales the image to fill the screen
+                // while maintaining aspect ratio, cropping the excess.
+                // FILL_CENTER means we take the smaller ratio to ensure the other dimension overflows
+                val scale = Math.min(imgW / screenW, imgH / screenH)
                 
-                val safeWidth = Math.min(finalFrameW, oriented.width)
-                val safeHeight = Math.min(finalFrameH, oriented.height)
-                val safeLeft = Math.max(0, Math.min(frameLeft, oriented.width - safeWidth))
-                val safeTop = Math.max(0, Math.min(frameTop, oriented.height - safeHeight))
+                // Calculate the visible area of the image on the screen
+                val visibleWidth = screenW * scale
+                val visibleHeight = screenH * scale
+                
+                // Offset of the image relative to the screen (centered)
+                val offsetX = (imgW - visibleWidth) / 2f
+                val offsetY = (imgH - visibleHeight) / 2f
+                
+                // Now map the frame coordinates from screen to image
+                val frameWidthPx = screenW * 0.65f
+                val frameHeightPx = frameWidthPx * (4.5f / 3.5f)
+                val frameLeftPx = (screenW - frameWidthPx) / 2f
+                val frameTopPx = (screenH - frameHeightPx) / 3f // 1/3 bias from top
+                
+                val cropLeft = (frameLeftPx * scale + offsetX).toInt()
+                val cropTop = (frameTopPx * scale + offsetY).toInt()
+                val cropWidth = (frameWidthPx * scale).toInt()
+                val cropHeight = (frameHeightPx * scale).toInt()
+                
+                // Ensure we stay within bounds
+                val safeLeft = Math.max(0, Math.min(cropLeft, oriented.width - 1))
+                val safeTop = Math.max(0, Math.min(cropTop, oriented.height - 1))
+                val safeWidth = Math.max(1, Math.min(cropWidth, oriented.width - safeLeft))
+                val safeHeight = Math.max(1, Math.min(cropHeight, oriented.height - safeTop))
                 
                 val cropped = Bitmap.createBitmap(oriented, safeLeft, safeTop, safeWidth, safeHeight)
                 
                 FileOutputStream(file).use { output ->
-                    val success = cropped.compress(Bitmap.CompressFormat.JPEG, 90, output)
+                    val success = cropped.compress(Bitmap.CompressFormat.JPEG, 95, output) // Higher quality
                     if (!success) throw Exception("Bitmap compression failed")
                     output.flush()
                 }
