@@ -350,7 +350,7 @@
                     <div id="job-details" style="margin-top: 20px; display: none;">
                         <div style="display: flex; justify-content: space-between; align-items: center;">
                             <span id="job-id-label" style="font-weight: 800; color: var(--primary);"></span>
-                            <button onclick="window.print()" style="background: none; border: 1px solid #e2e8f0; padding: 6px 12px; border-radius: 8px; cursor: pointer;">
+                            <button onclick="manualPrint()" style="background: none; border: 1px solid #e2e8f0; padding: 6px 12px; border-radius: 8px; cursor: pointer;">
                                 <i class="fas fa-print"></i>
                             </button>
                         </div>
@@ -373,13 +373,18 @@
         const voiceToggle = document.getElementById('voiceToggle');
         const manualUpload = document.getElementById('manualUpload');
 
+        let currentJob = null;
+
         socket.on('initial-data', (data) => {
             voiceEnabled = data.settings.voiceEnabled !== undefined ? data.settings.voiceEnabled : true;
             voiceLanguage = data.settings.voiceLanguage || 'English';
             voiceToggle.checked = voiceEnabled;
             updateLangUI(voiceLanguage);
             data.history.forEach(addJobToHistory);
-            if (data.history.length > 0) updatePreview(data.history[0]);
+            if (data.history.length > 0) {
+                currentJob = data.history[0];
+                updatePreview(currentJob);
+            }
         });
 
         function updateLangUI(lang) {
@@ -493,6 +498,7 @@
         }
 
         function updatePreview(job, autoPrint = false) {
+            currentJob = job;
             document.getElementById('job-details').style.display = 'block';
             document.getElementById('job-id-label').innerText = `JOB #${job.id.toString().slice(-4)}`;
             
@@ -508,14 +514,16 @@
             if (autoPrint) {
                 img.onload = () => {
                     console.log("Preparing to print via Iframe...");
-                    printViaIframe(freshUrl);
+                    // Auto-select orientation: "8" layout is 4x6 landscape, "4" is standard portrait
+                    const orientation = (job.layout === "8" || job.layout === "2x4") ? "landscape" : "portrait";
+                    printViaIframe(freshUrl, orientation);
                 };
             }
             
             previewArea.appendChild(img);
         }
 
-        function printViaIframe(url) {
+        function printViaIframe(url, orientation = "auto") {
             const iframe = document.getElementById('print-iframe');
             const doc = iframe.contentWindow.document;
             
@@ -527,7 +535,10 @@
                         <style>
                             body, html { margin: 0; padding: 0; background: white !important; }
                             img { width: 100%; height: auto; display: block; }
-                            @page { margin: 0; size: auto; }
+                            @page { 
+                                margin: 0; 
+                                size: ${orientation}; 
+                            }
                         </style>
                     </head>
                     <body>
@@ -541,6 +552,13 @@
             setTimeout(() => {
                 iframe.contentWindow.focus();
             }, 500);
+        }
+
+        function manualPrint() {
+            if (!currentJob) return;
+            const freshUrl = currentJob.preview + '?t=' + Date.now();
+            const orientation = (currentJob.layout === "8" || currentJob.layout === "2x4") ? "landscape" : "portrait";
+            printViaIframe(freshUrl, orientation);
         }
 
         function refreshHistory() {

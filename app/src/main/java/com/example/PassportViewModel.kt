@@ -54,13 +54,13 @@ class PassportViewModel : ViewModel() {
 
     private val apiService = retrofit.create(PassportApiService::class.java)
 
-    fun uploadPhoto(context: Context, uris: List<Uri>, layout: String) {
+    fun uploadPhoto(context: Context, uris: List<Uri>, layout: String, isCamera: Boolean = false) {
         _uiState.value = UiState.Loading
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             try {
                 val imageParts = uris.mapIndexed { index, uri ->
                     val uniqueName = "upload_${System.currentTimeMillis()}_$index.jpg"
-                    val file = uriToFile(context, uri, uniqueName)
+                    val file = uriToFile(context, uri, uniqueName, isCamera)
                     if (!file.exists() || file.length() == 0L) {
                         throw Exception("Failed to prepare image for upload: ${file.name}")
                     }
@@ -130,7 +130,7 @@ class PassportViewModel : ViewModel() {
         }
     }
 
-    private fun uriToFile(context: Context, uri: Uri, fileName: String): File {
+    private fun uriToFile(context: Context, uri: Uri, fileName: String, isCamera: Boolean): File {
         val file = File(context.cacheDir, fileName)
         try {
             if (file.exists()) file.delete()
@@ -181,59 +181,70 @@ class PassportViewModel : ViewModel() {
 
                 val oriented = Bitmap.createBitmap(original, 0, 0, original.width, original.height, matrix, true)
 
-                // We need to crop the oriented bitmap based on the 0.65 box width
-                // But we must account for the fact that the camera might be 4:3 while screen is 20:9
-                
-                // Precise cropping based on screen aspect ratio vs image aspect ratio
-                val metrics = context.resources.displayMetrics
-                val screenW = metrics.widthPixels.toFloat()
-                val screenH = metrics.heightPixels.toFloat()
-                
-                val imgW = oriented.width.toFloat()
-                val imgH = oriented.height.toFloat()
-                
-                // Since PreviewView is FILL_CENTER, it scales the image to fill the screen
-                // while maintaining aspect ratio, cropping the excess.
-                // FILL_CENTER means we take the smaller ratio to ensure the other dimension overflows
-                val scale = Math.min(imgW / screenW, imgH / screenH)
-                
-                // Calculate the visible area of the image on the screen
-                val visibleWidth = screenW * scale
-                val visibleHeight = screenH * scale
-                
-                // Offset of the image relative to the screen (centered)
-                val offsetX = (imgW - visibleWidth) / 2f
-                val offsetY = (imgH - visibleHeight) / 2f
-                
-                // Now map the frame coordinates from screen to image
-                val frameWidthPx = screenW * 0.65f
-                val frameHeightPx = frameWidthPx * (4.5f / 3.5f)
-                val frameLeftPx = (screenW - frameWidthPx) / 2f
-                val frameTopPx = (screenH - frameHeightPx) / 3f // 1/3 bias from top
-                
-                val cropLeft = (frameLeftPx * scale + offsetX).toInt()
-                val cropTop = (frameTopPx * scale + offsetY).toInt()
-                val cropWidth = (frameWidthPx * scale).toInt()
-                val cropHeight = (frameHeightPx * scale).toInt()
-                
-                // Ensure we stay within bounds
-                val safeLeft = Math.max(0, Math.min(cropLeft, oriented.width - 1))
-                val safeTop = Math.max(0, Math.min(cropTop, oriented.height - 1))
-                val safeWidth = Math.max(1, Math.min(cropWidth, oriented.width - safeLeft))
-                val safeHeight = Math.max(1, Math.min(cropHeight, oriented.height - safeTop))
-                
-                val cropped = Bitmap.createBitmap(oriented, safeLeft, safeTop, safeWidth, safeHeight)
-                
-                FileOutputStream(file).use { output ->
-                    val success = cropped.compress(Bitmap.CompressFormat.JPEG, 95, output) // Higher quality
-                    if (!success) throw Exception("Bitmap compression failed")
-                    output.flush()
+                if (isCamera) {
+                    // We need to crop the oriented bitmap based on the 0.65 box width
+                    // But we must account for the fact that the camera might be 4:3 while screen is 20:9
+                    
+                    // Precise cropping based on screen aspect ratio vs image aspect ratio
+                    val metrics = context.resources.displayMetrics
+                    val screenW = metrics.widthPixels.toFloat()
+                    val screenH = metrics.heightPixels.toFloat()
+                    
+                    val imgW = oriented.width.toFloat()
+                    val imgH = oriented.height.toFloat()
+                    
+                    // Since PreviewView is FILL_CENTER, it scales the image to fill the screen
+                    // while maintaining aspect ratio, cropping the excess.
+                    // FILL_CENTER means we take the smaller ratio to ensure the other dimension overflows
+                    val scale = Math.min(imgW / screenW, imgH / screenH)
+                    
+                    // Calculate the visible area of the image on the screen
+                    val visibleWidth = screenW * scale
+                    val visibleHeight = screenH * scale
+                    
+                    // Offset of the image relative to the screen (centered)
+                    val offsetX = (imgW - visibleWidth) / 2f
+                    val offsetY = (imgH - visibleHeight) / 2f
+                    
+                    // Now map the frame coordinates from screen to image
+                    val frameWidthPx = screenW * 0.65f
+                    val frameHeightPx = frameWidthPx * (4.5f / 3.5f)
+                    val frameLeftPx = (screenW - frameWidthPx) / 2f
+                    val frameTopPx = (screenH - frameHeightPx) / 3f // 1/3 bias from top
+                    
+                    val cropLeft = (frameLeftPx * scale + offsetX).toInt()
+                    val cropTop = (frameTopPx * scale + offsetY).toInt()
+                    val cropWidth = (frameWidthPx * scale).toInt()
+                    val cropHeight = (frameHeightPx * scale).toInt()
+                    
+                    // Ensure we stay within bounds
+                    val safeLeft = Math.max(0, Math.min(cropLeft, oriented.width - 1))
+                    val safeTop = Math.max(0, Math.min(cropTop, oriented.height - 1))
+                    val safeWidth = Math.max(1, Math.min(cropWidth, oriented.width - safeLeft))
+                    val safeHeight = Math.max(1, Math.min(cropHeight, oriented.height - safeTop))
+                    
+                    val cropped = Bitmap.createBitmap(oriented, safeLeft, safeTop, safeWidth, safeHeight)
+                    
+                    FileOutputStream(file).use { output ->
+                        val success = cropped.compress(Bitmap.CompressFormat.JPEG, 95, output) // Higher quality
+                        if (!success) throw Exception("Bitmap compression failed")
+                        output.flush()
+                    }
+                    
+                    if (cropped != oriented) cropped.recycle()
+                    android.util.Log.d("PassportApp", "Image cropped to frame: ${safeWidth}x${safeHeight} at ($safeLeft, $safeTop)")
+                } else {
+                    // Manual upload: No crop
+                    FileOutputStream(file).use { output ->
+                        val success = oriented.compress(Bitmap.CompressFormat.JPEG, 95, output)
+                        if (!success) throw Exception("Bitmap compression failed")
+                        output.flush()
+                    }
+                    android.util.Log.d("PassportApp", "Manual upload: Image saved as-is with rotation $rotation")
                 }
                 
-                if (cropped != oriented) cropped.recycle()
                 if (oriented != original) oriented.recycle()
                 original.recycle()
-                android.util.Log.d("PassportApp", "Image cropped to frame: ${safeWidth}x${safeHeight} at ($safeLeft, $safeTop) with rotation $rotation")
             } else {
                 // Raw copy as last resort
                 context.contentResolver.openInputStream(uri)?.use { input ->

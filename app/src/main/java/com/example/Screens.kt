@@ -355,7 +355,7 @@ fun CameraScreen(
 
 @Composable
 fun PreviewScreen(
-    photoUris: List<Uri>,
+    photoUris: List<Pair<Uri, Boolean>>,
     viewModel: PassportViewModel,
     voiceManager: VoiceManager,
     onAddMore: () -> Unit,
@@ -396,7 +396,7 @@ fun PreviewScreen(
         ) {
             if (photoUris.size > 1) {
                 Row(modifier = Modifier.fillMaxSize()) {
-                    photoUris.take(2).forEach { uri ->
+                    photoUris.take(2).forEach { (uri, _) ->
                         AsyncImage(
                             model = uri,
                             contentDescription = "Selected Photo",
@@ -407,7 +407,7 @@ fun PreviewScreen(
                 }
             } else {
                 AsyncImage(
-                    model = photoUris.firstOrNull(),
+                    model = photoUris.firstOrNull()?.first,
                     contentDescription = "Selected Photo",
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Fit
@@ -479,7 +479,16 @@ fun PreviewScreen(
             val canPrint = if (selectedLayout == "2x4") photoUris.size >= 2 else photoUris.isNotEmpty()
             
             Button(
-                onClick = { viewModel.uploadPhoto(context, photoUris, selectedLayout) },
+                onClick = { 
+                    // Use isCamera=true if all photos are from camera
+                    val isAnyFromCamera = photoUris.any { it.second }
+                    viewModel.uploadPhoto(
+                        context = context, 
+                        uris = photoUris.map { it.first }, 
+                        layout = selectedLayout,
+                        isCamera = isAnyFromCamera
+                    ) 
+                },
                 enabled = canPrint,
                 modifier = Modifier
                     .fillMaxWidth()

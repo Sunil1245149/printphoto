@@ -53,7 +53,7 @@ fun MainNavigation(voiceManager: VoiceManager) {
     val viewModel: PassportViewModel = viewModel()
     val context = androidx.compose.ui.platform.LocalContext.current
     
-    var photoUris by remember { mutableStateOf<List<Uri>>(emptyList()) }
+    var photoUris by remember { mutableStateOf<List<Pair<Uri, Boolean>>>(emptyList()) }
     var selectedLanguage by remember { mutableStateOf("English") }
 
     LaunchedEffect(selectedLanguage) {
@@ -94,7 +94,7 @@ fun MainNavigation(voiceManager: VoiceManager) {
                     // Portal is now a web portal hosted on Render
                 },
                 onGalleryClick = { uri ->
-                    photoUris = listOf(uri)
+                    photoUris = listOf(uri to false) // Gallery = false
                     navController.navigate("preview")
                 },
                 onPingClick = {
@@ -105,7 +105,7 @@ fun MainNavigation(voiceManager: VoiceManager) {
         composable("camera") {
             CameraScreen(
                 onPhotoCaptured = { uri ->
-                    photoUris = photoUris + uri
+                    photoUris = photoUris + (uri to true) // Camera = true
                     navController.navigate("preview")
                 },
                 onBack = { navController.popBackStack() }
