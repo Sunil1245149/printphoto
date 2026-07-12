@@ -171,7 +171,7 @@ const uploadHandler = [
                 
                 const svgBorder = Buffer.from(`
                     <svg width="${w}" height="${h}">
-                        <rect x="2" y="2" width="${w-4}" height="${h-4}" fill="none" stroke="#aaaaaa" stroke-width="1" stroke-dasharray="2,8" />
+                        <rect x="2" y="2" width="${w-4}" height="${h-4}" fill="none" stroke="#888888" stroke-width="1.2" stroke-dasharray="5,5" />
                     </svg>
                 `);
 

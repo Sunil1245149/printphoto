@@ -35,8 +35,335 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import coil.compose.AsyncImage
 import java.io.File
+import java.io.FileOutputStream
+import android.graphics.BitmapFactory
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.foundation.gestures.rememberTransformableState
+import androidx.compose.foundation.gestures.transformable
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.ColorMatrix
+import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.input.pointer.pointerInput
+import android.graphics.Matrix
+import android.graphics.Paint
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.graphics.drawscope.withTransform
+import android.graphics.Canvas as AndroidCanvas
+
+@Composable
+fun EditImageScreen(
+    uri: Uri,
+    onSave: (Uri) -> Unit,
+    onBack: () -> Unit
+) {
+    val context = LocalContext.current
+    var bitmap by remember { mutableStateOf<android.graphics.Bitmap?>(null) }
+    var brightness by remember { mutableFloatStateOf(1f) }
+    var contrast by remember { mutableFloatStateOf(1f) }
+    var rotation by remember { mutableFloatStateOf(0f) }
+    
+    // Zoom and Pan
+    var scale by remember { mutableFloatStateOf(1f) }
+    var offset by remember { mutableStateOf(Offset.Zero) }
+
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    LaunchedEffect(uri) {
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            try {
+                val inputStream = context.contentResolver.openInputStream(uri)
+                val original = BitmapFactory.decodeStream(inputStream)
+                
+                // Initial rotation handling from EXIF if needed
+                val exifRotation = try {
+                    context.contentResolver.openInputStream(uri)?.use { input ->
+                        val exifInterface = androidx.exifinterface.media.ExifInterface(input)
+                        when (exifInterface.getAttributeInt(androidx.exifinterface.media.ExifInterface.TAG_ORIENTATION, androidx.exifinterface.media.ExifInterface.ORIENTATION_NORMAL)) {
+                            androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_90 -> 90f
+                            androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_180 -> 180f
+                            androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_270 -> 270f
+                            else -> 0f
+                        }
+                    } ?: 0f
+                } catch (e: Exception) { 0f }
+
+                if (exifRotation != 0f) {
+                    val matrix = Matrix().apply { postRotate(exifRotation) }
+                    bitmap = android.graphics.Bitmap.createBitmap(original, 0, 0, original.width, original.height, matrix, true)
+                } else {
+                    bitmap = original
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    val colorMatrix = remember(brightness, contrast) {
+        val b = (brightness - 1f) * 255f
+        val c = contrast
+        val t = (1.0f - c) * 128f
+        
+        ColorMatrix(floatArrayOf(
+            c, 0f, 0f, 0f, b + t,
+            0f, c, 0f, 0f, b + t,
+            0f, 0f, c, 0f, b + t,
+            0f, 0f, 0f, 1f, 0f
+        ))
+    }
+
+    val displayMetrics = context.resources.displayMetrics
+    val screenWidth = displayMetrics.widthPixels / displayMetrics.density
+    val screenHeight = displayMetrics.heightPixels / displayMetrics.density
+
+    Scaffold(
+        topBar = {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .statusBarsPadding()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(onClick = onBack) {
+                    Icon(Icons.Default.Close, contentDescription = "Cancel")
+                }
+                Text("Edit Photo", fontWeight = FontWeight.Bold)
+                TextButton(onClick = {
+                    val currentBitmap = bitmap ?: return@TextButton
+                    
+                    // Perform Save
+                    val editedUri = saveEditedImage(
+                        context, 
+                        currentBitmap, 
+                        brightness, 
+                        contrast, 
+                        rotation, 
+                        scale, 
+                        offset,
+                        screenWidth,
+                        screenHeight
+                    )
+                    if (editedUri != null) {
+                        onSave(editedUri)
+                    }
+                }) {
+                    Text("Done", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                }
+            }
+        },
+        bottomBar = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.surface)
+                    .padding(16.dp)
+                    .navigationBarsPadding()
+            ) {
+                // Controls
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    IconButton(onClick = { rotation = (rotation - 90f) % 360f }) {
+                        Icon(Icons.Default.RotateLeft, contentDescription = "Rotate Left")
+                    }
+                    IconButton(onClick = { rotation = (rotation + 90f) % 360f }) {
+                        Icon(Icons.Default.RotateRight, contentDescription = "Rotate Right")
+                    }
+                    IconButton(onClick = {
+                        brightness = 1f
+                        contrast = 1f
+                        rotation = 0f
+                        scale = 1f
+                        offset = Offset.Zero
+                    }) {
+                        Icon(Icons.Default.Refresh, contentDescription = "Reset")
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                Text("Brightness", style = MaterialTheme.typography.labelSmall)
+                Slider(
+                    value = brightness,
+                    onValueChange = { brightness = it },
+                    valueRange = 0.5f..1.5f,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Text("Contrast", style = MaterialTheme.typography.labelSmall)
+                Slider(
+                    value = contrast,
+                    onValueChange = { contrast = it },
+                    valueRange = 0.5f..1.5f,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        }
+    ) { innerPadding ->
+        BoxWithConstraints(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .background(Color.Black)
+                .pointerInput(Unit) {
+                    detectTransformGestures { _, pan, zoom, _ ->
+                        scale *= zoom
+                        offset += pan
+                    }
+                },
+            contentAlignment = Alignment.Center
+        ) {
+            val screenW = maxWidth
+            val screenH = maxHeight
+
+            bitmap?.let { b ->
+                val imageBitmap = b.asImageBitmap()
+                Image(
+                    bitmap = imageBitmap,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer(
+                            scaleX = scale,
+                            scaleY = scale,
+                            translationX = offset.x,
+                            translationY = offset.y,
+                            rotationZ = rotation
+                        ),
+                    colorFilter = ColorFilter.colorMatrix(colorMatrix),
+                    contentScale = ContentScale.Fit
+                )
+            }
+            
+            // Helpful Guide Overlay (Passport Size Aspect Ratio)
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(0.7f)
+                    .aspectRatio(3.5f / 4.5f)
+                    .background(Color.Transparent)
+                    .clip(RoundedCornerShape(4.dp))
+                    .align(Alignment.Center)
+                    .alpha(0.5f)
+                    .shadow(0.dp, RoundedCornerShape(4.dp))
+            ) {
+                // Border guide
+                Canvas(modifier = Modifier.fillMaxSize()) {
+                    val dashPathEffect = android.graphics.DashPathEffect(floatArrayOf(10f, 10f), 0f)
+                    drawIntoCanvas { canvas ->
+                        val paint = android.graphics.Paint().apply {
+                            color = android.graphics.Color.WHITE
+                            style = android.graphics.Paint.Style.STROKE
+                            strokeWidth = 4f
+                            pathEffect = dashPathEffect
+                        }
+                        canvas.nativeCanvas.drawRect(0f, 0f, size.width, size.height, paint)
+                    }
+                }
+            }
+            
+            Text(
+                "Pinch to zoom & drag to align",
+                color = Color.White.copy(alpha = 0.6f),
+                style = MaterialTheme.typography.labelSmall,
+                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 16.dp)
+            )
+        }
+    }
+}
+
+private fun saveEditedImage(
+    context: android.content.Context,
+    bitmap: android.graphics.Bitmap,
+    brightness: Float,
+    contrast: Float,
+    rotation: Float,
+    scale: Float,
+    offset: Offset,
+    screenWidth: Float,
+    screenHeight: Float
+): Uri? {
+    try {
+        // Create a resulting bitmap that matches the visual state of the guide box.
+        // The guide box is 70% width, aspect 3.5:4.5
+        val guideWidth = screenWidth * 0.7f
+        val guideHeight = guideWidth * (4.5f / 3.5f)
+        
+        // We want the output to be high res
+        val outputScale = 1200f / guideWidth
+        val targetWidth = (guideWidth * outputScale).toInt()
+        val targetHeight = (guideHeight * outputScale).toInt()
+        
+        val result = android.graphics.Bitmap.createBitmap(targetWidth, targetHeight, android.graphics.Bitmap.Config.ARGB_8888)
+        val canvas = AndroidCanvas(result)
+        canvas.drawColor(android.graphics.Color.WHITE)
+        
+        val matrix = Matrix()
+        
+        val bitmapW = bitmap.width.toFloat()
+        val bitmapH = bitmap.height.toFloat()
+        
+        // Base scale for ContentScale.Fit in the screen
+        val fitScale = Math.min(screenWidth / bitmapW, screenHeight / bitmapH)
+        
+        // Transform logic:
+        // 1. Move to center of bitmap
+        matrix.postTranslate(-bitmapW / 2f, -bitmapH / 2f)
+        // 2. Apply user scale and the fit scale
+        matrix.postScale(fitScale * scale, fitScale * scale)
+        // 3. Apply rotation
+        matrix.postRotate(rotation)
+        // 4. Move to screen center + user offset
+        matrix.postTranslate(screenWidth / 2f + offset.x, screenHeight / 2f + offset.y)
+        
+        // 5. Shift relative to the guide box center (which is screen center)
+        // Since result canvas (0,0) is guide top-left, we shift by -guide_top_left
+        val guideLeft = (screenWidth - guideWidth) / 2f
+        val guideTop = (screenHeight - guideHeight) / 2f
+        matrix.postTranslate(-guideLeft, -guideTop)
+        
+        // 6. Scale up to target resolution
+        matrix.postScale(outputScale, outputScale)
+
+        val paint = Paint()
+        val cm = android.graphics.ColorMatrix()
+        val b = (brightness - 1f) * 255f
+        val c = contrast
+        val t = (1.0f - c) * 128f
+        cm.set(floatArrayOf(
+            c, 0f, 0f, 0f, b + t,
+            0f, c, 0f, 0f, b + t,
+            0f, 0f, c, 0f, b + t,
+            0f, 0f, 0f, 1f, 0f
+        ))
+        paint.colorFilter = android.graphics.ColorMatrixColorFilter(cm)
+        paint.isAntiAlias = true
+        paint.isFilterBitmap = true
+        
+        canvas.drawBitmap(bitmap, matrix, paint)
+        
+        val file = File(context.cacheDir, "edited_${System.currentTimeMillis()}.jpg")
+        FileOutputStream(file).use { out ->
+            result.compress(android.graphics.Bitmap.CompressFormat.JPEG, 95, out)
+        }
+        return Uri.fromFile(file)
+    } catch (e: Exception) {
+        e.printStackTrace()
+        return null
+    }
+}
 
 @Composable
 fun SplashScreen(onFinished: () -> Unit) {

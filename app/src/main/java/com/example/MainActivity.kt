@@ -101,9 +101,11 @@ fun MainNavigation(voiceManager: VoiceManager) {
                     // Portal is now a web portal hosted on Render
                 },
                 onGalleryClick = { uris ->
-                    photoUris = photoUris + uris.map { it to false }
-                    if (photoUris.isNotEmpty()) {
-                        navController.navigate("preview")
+                    // For now, edit only the first one if multiple selected, or handle sequentially
+                    // To keep it simple, let's take the first one and navigate to edit
+                    if (uris.isNotEmpty()) {
+                        val encodedUri = Uri.encode(uris.first().toString())
+                        navController.navigate("edit_image/$encodedUri")
                     }
                 },
                 onPingClick = {
@@ -114,8 +116,25 @@ fun MainNavigation(voiceManager: VoiceManager) {
         composable("camera") {
             CameraScreen(
                 onPhotoCaptured = { uri ->
-                    photoUris = photoUris + (uri to true) // Camera = true
-                    navController.navigate("preview")
+                    val encodedUri = Uri.encode(uri.toString())
+                    navController.navigate("edit_image/$encodedUri")
+                },
+                onBack = { navController.popBackStack() }
+            )
+        }
+        composable("edit_image/{uri}") { backStackEntry ->
+            val uriString = backStackEntry.arguments?.getString("uri") ?: ""
+            val uri = Uri.parse(uriString)
+            EditImageScreen(
+                uri = uri,
+                onSave = { editedUri ->
+                    photoUris = photoUris + (editedUri to false)
+                    navController.navigate("preview") {
+                        // Pop the edit screen so back from preview doesn't go to edit again easily
+                        // Or keep it in backstack if user wants to go back and re-edit? 
+                        // Usually better to pop to home/preview.
+                        popUpTo("home") { inclusive = false }
+                    }
                 },
                 onBack = { navController.popBackStack() }
             )
