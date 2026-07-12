@@ -92,7 +92,7 @@ const uploadHandler = [
             const pWidth = 413; // 3.5cm
             const pHeight = 531; // 4.5cm
             const borderSize = 2;
-            const gapSize = 4; 
+            const gapSize = 10; 
 
             // Helper to process a single photo
             const processPhoto = async (file) => {
@@ -171,7 +171,7 @@ const uploadHandler = [
                 
                 const svgBorder = Buffer.from(`
                     <svg width="${w}" height="${h}">
-                        <rect x="0.5" y="0.5" width="${w-1}" height="${h-1}" fill="none" stroke="#888888" stroke-width="1" stroke-dasharray="5,5" />
+                        <rect x="5" y="5" width="${w-10}" height="${h-10}" fill="none" stroke="#000000" stroke-width="1" stroke-dasharray="4,4" />
                     </svg>
                 `);
 
@@ -229,8 +229,8 @@ const uploadHandler = [
             const fullH = pHeight + (borderSize + gapSize) * 2;
             
             // On 1800x1200 (6x4 Landscape)
-            const interGapX = 4; 
-            const interGapY = 30; 
+            const interGapX = 8; 
+            const interGapY = 20; 
             const totalW = (fullW * 4) + (interGapX * 3);
             const totalH = (fullH * 2) + interGapY;
 
@@ -283,8 +283,8 @@ const uploadHandler = [
             const fullW = pWidth + (borderSize + gapSize) * 2;
             const fullH = pHeight + (borderSize + gapSize) * 2;
             
-            const interGapX = 4; 
-            const interGapY = 30; 
+            const interGapX = 8; 
+            const interGapY = 20; 
             const totalW = (fullW * 4) + (interGapX * 3);
             const totalH = (fullH * 2) + interGapY;
 
