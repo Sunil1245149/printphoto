@@ -89,10 +89,10 @@ const uploadHandler = [
 
             const sheetWidth = 1800; // 6 inch at 300 DPI
             const sheetHeight = 1200; // 4 inch at 300 DPI
-            const pWidth = 400; 
-            const pHeight = 530; 
+            const pWidth = 360; 
+            const pHeight = 475; 
             const borderSize = 2;
-            const gapSize = 20; 
+            const gapSize = 25; 
 
             // Helper to process a single photo
             const processPhoto = async (file) => {

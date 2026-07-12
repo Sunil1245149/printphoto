@@ -70,6 +70,7 @@ fun EditImageScreen(
     var bitmap by remember { mutableStateOf<android.graphics.Bitmap?>(null) }
     var brightness by remember { mutableFloatStateOf(1f) }
     var contrast by remember { mutableFloatStateOf(1f) }
+    var saturation by remember { mutableFloatStateOf(1f) }
     var rotation by remember { mutableFloatStateOf(0f) }
     
     // Zoom and Pan
@@ -109,17 +110,22 @@ fun EditImageScreen(
         }
     }
 
-    val colorMatrix = remember(brightness, contrast) {
+    val colorMatrix = remember(brightness, contrast, saturation) {
         val b = (brightness - 1f) * 255f
         val c = contrast
         val t = (1.0f - c) * 128f
         
-        ColorMatrix(floatArrayOf(
+        val cm = ColorMatrix(floatArrayOf(
             c, 0f, 0f, 0f, b + t,
             0f, c, 0f, 0f, b + t,
             0f, 0f, c, 0f, b + t,
             0f, 0f, 0f, 1f, 0f
         ))
+        
+        // Apply saturation
+        val saturationMatrix = ColorMatrix().apply { setToSaturation(saturation) }
+        cm.timesAssign(saturationMatrix)
+        cm
     }
 
     val displayMetrics = context.resources.displayMetrics
@@ -149,11 +155,12 @@ fun EditImageScreen(
                         currentBitmap, 
                         brightness, 
                         contrast, 
+                        saturation,
                         rotation, 
                         scale, 
                         offset,
-                        screenWidth,
-                        screenHeight
+                        screenWidth * displayMetrics.density,
+                        screenHeight * displayMetrics.density
                     )
                     if (editedUri != null) {
                         onSave(editedUri)
@@ -185,6 +192,7 @@ fun EditImageScreen(
                     IconButton(onClick = {
                         brightness = 1f
                         contrast = 1f
+                        saturation = 1f
                         rotation = 0f
                         scale = 1f
                         offset = Offset.Zero
@@ -193,23 +201,37 @@ fun EditImageScreen(
                     }
                 }
                 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(4.dp))
                 
-                Text("Brightness", style = MaterialTheme.typography.labelSmall)
-                Slider(
-                    value = brightness,
-                    onValueChange = { brightness = it },
-                    valueRange = 0.5f..1.5f,
-                    modifier = Modifier.fillMaxWidth()
-                )
+                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text("Bright", style = MaterialTheme.typography.labelSmall, modifier = Modifier.width(50.dp))
+                    Slider(
+                        value = brightness,
+                        onValueChange = { brightness = it },
+                        valueRange = 0.5f..1.5f,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
 
-                Text("Contrast", style = MaterialTheme.typography.labelSmall)
-                Slider(
-                    value = contrast,
-                    onValueChange = { contrast = it },
-                    valueRange = 0.5f..1.5f,
-                    modifier = Modifier.fillMaxWidth()
-                )
+                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text("Contrast", style = MaterialTheme.typography.labelSmall, modifier = Modifier.width(50.dp))
+                    Slider(
+                        value = contrast,
+                        onValueChange = { contrast = it },
+                        valueRange = 0.5f..1.5f,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text("Colors", style = MaterialTheme.typography.labelSmall, modifier = Modifier.width(50.dp))
+                    Slider(
+                        value = saturation,
+                        onValueChange = { saturation = it },
+                        valueRange = 0f..2f,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
             }
         }
     ) { innerPadding ->
@@ -256,17 +278,15 @@ fun EditImageScreen(
                     .background(Color.Transparent)
                     .clip(RoundedCornerShape(4.dp))
                     .align(Alignment.Center)
-                    .alpha(0.5f)
-                    .shadow(0.dp, RoundedCornerShape(4.dp))
             ) {
                 // Border guide
                 Canvas(modifier = Modifier.fillMaxSize()) {
-                    val dashPathEffect = android.graphics.DashPathEffect(floatArrayOf(10f, 10f), 0f)
+                    val dashPathEffect = android.graphics.DashPathEffect(floatArrayOf(15f, 10f), 0f)
                     drawIntoCanvas { canvas ->
                         val paint = android.graphics.Paint().apply {
-                            color = android.graphics.Color.WHITE
+                            color = android.graphics.Color.YELLOW // Brighter color
                             style = android.graphics.Paint.Style.STROKE
-                            strokeWidth = 4f
+                            strokeWidth = 6f // Thicker line
                             pathEffect = dashPathEffect
                         }
                         canvas.nativeCanvas.drawRect(0f, 0f, size.width, size.height, paint)
@@ -289,19 +309,20 @@ private fun saveEditedImage(
     bitmap: android.graphics.Bitmap,
     brightness: Float,
     contrast: Float,
+    saturation: Float,
     rotation: Float,
     scale: Float,
     offset: Offset,
-    screenWidth: Float,
-    screenHeight: Float
+    screenWidthPx: Float,
+    screenHeightPx: Float
 ): Uri? {
     try {
         // Create a resulting bitmap that matches the visual state of the guide box.
         // The guide box is 70% width, aspect 3.5:4.5
-        val guideWidth = screenWidth * 0.7f
+        val guideWidth = screenWidthPx * 0.7f
         val guideHeight = guideWidth * (4.5f / 3.5f)
         
-        // We want the output to be high res
+        // We want the output to be high res (e.g. 1200px width)
         val outputScale = 1200f / guideWidth
         val targetWidth = (guideWidth * outputScale).toInt()
         val targetHeight = (guideHeight * outputScale).toInt()
@@ -315,29 +336,32 @@ private fun saveEditedImage(
         val bitmapW = bitmap.width.toFloat()
         val bitmapH = bitmap.height.toFloat()
         
-        // Base scale for ContentScale.Fit in the screen
-        val fitScale = Math.min(screenWidth / bitmapW, screenHeight / bitmapH)
+        // Base scale for ContentScale.Fit in the screen area
+        val fitScale = Math.min(screenWidthPx / bitmapW, screenHeightPx / bitmapH)
         
-        // Transform logic:
-        // 1. Move to center of bitmap
+        // Apply transformations in order:
+        // 1. Move bitmap center to (0,0)
         matrix.postTranslate(-bitmapW / 2f, -bitmapH / 2f)
-        // 2. Apply user scale and the fit scale
+        // 2. Apply combined scales (Fit + User Zoom)
         matrix.postScale(fitScale * scale, fitScale * scale)
-        // 3. Apply rotation
+        // 3. Apply user rotation
         matrix.postRotate(rotation)
-        // 4. Move to screen center + user offset
-        matrix.postTranslate(screenWidth / 2f + offset.x, screenHeight / 2f + offset.y)
+        // 4. Move to screen center + user pan offset
+        // Crucial: offset is in DP, must convert to pixels
+        val density = context.resources.displayMetrics.density
+        matrix.postTranslate(screenWidthPx / 2f + (offset.x * density), screenHeightPx / 2f + (offset.y * density))
         
-        // 5. Shift relative to the guide box center (which is screen center)
-        // Since result canvas (0,0) is guide top-left, we shift by -guide_top_left
-        val guideLeft = (screenWidth - guideWidth) / 2f
-        val guideTop = (screenHeight - guideHeight) / 2f
+        // 5. Shift relative to the guide box top-left
+        val guideLeft = (screenWidthPx - guideWidth) / 2f
+        val guideTop = (screenHeightPx - guideHeight) / 2f
         matrix.postTranslate(-guideLeft, -guideTop)
         
-        // 6. Scale up to target resolution
+        // 6. Scale up to the target output resolution
         matrix.postScale(outputScale, outputScale)
 
         val paint = Paint()
+        
+        // Replicate ColorMatrix logic
         val cm = android.graphics.ColorMatrix()
         val b = (brightness - 1f) * 255f
         val c = contrast
@@ -348,6 +372,11 @@ private fun saveEditedImage(
             0f, 0f, c, 0f, b + t,
             0f, 0f, 0f, 1f, 0f
         ))
+        
+        val satMatrix = android.graphics.ColorMatrix()
+        satMatrix.setSaturation(saturation)
+        cm.postConcat(satMatrix)
+        
         paint.colorFilter = android.graphics.ColorMatrixColorFilter(cm)
         paint.isAntiAlias = true
         paint.isFilterBitmap = true
