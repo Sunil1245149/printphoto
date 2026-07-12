@@ -89,10 +89,10 @@ const uploadHandler = [
 
             const sheetWidth = 1800; // 6 inch at 300 DPI
             const sheetHeight = 1200; // 4 inch at 300 DPI
-            const pWidth = 380; 
-            const pHeight = 500; 
+            const pWidth = 400; 
+            const pHeight = 530; 
             const borderSize = 2;
-            const gapSize = 25; 
+            const gapSize = 20; 
 
             // Helper to process a single photo
             const processPhoto = async (file) => {
@@ -171,7 +171,7 @@ const uploadHandler = [
                 
                 const svgBorder = Buffer.from(`
                     <svg width="${w}" height="${h}">
-                        <rect x="2" y="2" width="${w-4}" height="${h-4}" fill="none" stroke="#888888" stroke-width="1.2" stroke-dasharray="5,5" />
+                        <rect x="2" y="2" width="${w-4}" height="${h-4}" fill="none" stroke="#666666" stroke-width="1.2" stroke-dasharray="4,4" />
                     </svg>
                 `);
 
@@ -210,12 +210,15 @@ const uploadHandler = [
             const fullW = pWidth + (borderSize + gapSize) * 2;
             const fullH = pHeight + (borderSize + gapSize) * 2;
             
-            // Cluster them in the center like others
+            // 4 copies in Portrait orientation (1200x1800)
+            const sW = 1200;
+            const sH = 1800;
+            
             const totalW = (fullW * 2);
             const totalH = (fullH * 2);
 
-            const marginX = Math.floor((sheetWidth - totalW) / 2);
-            const marginY = Math.floor((sheetHeight - totalH) / 2);
+            const marginX = Math.floor((sW - totalW) / 2);
+            const marginY = Math.floor((sH - totalH) / 2);
 
             compositeArr = [
                 { input: photo, top: marginY, left: marginX },
@@ -225,7 +228,7 @@ const uploadHandler = [
             ];
             
             finalOutput = sharp({
-                create: { width: 1800, height: 1200, channels: 4, background: { r: 255, g: 255, b: 255, alpha: 1 } }
+                create: { width: sW, height: sH, channels: 4, background: { r: 255, g: 255, b: 255, alpha: 1 } }
             });
         } else if (layout === "2x4") {
             const photo1 = processedPhotos[0];
