@@ -89,10 +89,10 @@ const uploadHandler = [
 
             const sheetWidth = 1800; // 6 inch at 300 DPI
             const sheetHeight = 1200; // 4 inch at 300 DPI
-            const pWidth = 413; // 3.5cm
-            const pHeight = 531; // 4.5cm
+            const pWidth = 390; // Reduced for smaller size
+            const pHeight = 505; // Reduced for smaller size
             const borderSize = 2;
-            const gapSize = 15; 
+            const gapSize = 10; 
 
             // Helper to process a single photo
             const processPhoto = async (file) => {
@@ -171,7 +171,7 @@ const uploadHandler = [
                 
                 const svgBorder = Buffer.from(`
                     <svg width="${w}" height="${h}">
-                        <rect x="0.5" y="0.5" width="${w-1}" height="${h-1}" fill="none" stroke="#000000" stroke-width="1" stroke-dasharray="6,4" />
+                        <rect x="1" y="1" width="${w-2}" height="${h-2}" fill="none" stroke="#000000" stroke-width="1.5" stroke-dasharray="6,4" />
                     </svg>
                 `);
 
@@ -207,20 +207,25 @@ const uploadHandler = [
 
         if (layout === "4") {
             const photo = processedPhotos[0];
-            const margin = 100;
             const fullW = pWidth + (borderSize + gapSize) * 2;
             const fullH = pHeight + (borderSize + gapSize) * 2;
-            const gap = 150;
+            
+            // Cluster them in the center like others
+            const totalW = (fullW * 2);
+            const totalH = (fullH * 2);
+
+            const marginX = Math.floor((sheetWidth - totalW) / 2);
+            const marginY = Math.floor((sheetHeight - totalH) / 2);
 
             compositeArr = [
-                { input: photo, top: margin, left: margin },
-                { input: photo, top: margin, left: margin + fullW + gap },
-                { input: photo, top: margin + fullH + gap, left: margin },
-                { input: photo, top: margin + fullH + gap, left: margin + fullW + gap }
+                { input: photo, top: marginY, left: marginX },
+                { input: photo, top: marginY, left: marginX + fullW },
+                { input: photo, top: marginY + fullH, left: marginX },
+                { input: photo, top: marginY + fullH, left: marginX + fullW }
             ];
             
             finalOutput = sharp({
-                create: { width: 1200, height: 1800, channels: 4, background: { r: 255, g: 255, b: 255, alpha: 1 } }
+                create: { width: 1800, height: 1200, channels: 4, background: { r: 255, g: 255, b: 255, alpha: 1 } }
             });
         } else if (layout === "2x4") {
             const photo1 = processedPhotos[0];
