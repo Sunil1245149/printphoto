@@ -92,7 +92,7 @@ const uploadHandler = [
             const pWidth = 413; // 3.5cm
             const pHeight = 531; // 4.5cm
             const borderSize = 2;
-            const gapSize = 6; 
+            const gapSize = 4; 
 
             // Helper to process a single photo
             const processPhoto = async (file) => {
@@ -171,7 +171,7 @@ const uploadHandler = [
                 
                 const svgBorder = Buffer.from(`
                     <svg width="${w}" height="${h}">
-                        <rect x="1" y="1" width="${w-2}" height="${h-2}" fill="none" stroke="#CCCCCC" stroke-width="1" stroke-dasharray="5,5" />
+                        <rect x="0.5" y="0.5" width="${w-1}" height="${h-1}" fill="none" stroke="#888888" stroke-width="1" stroke-dasharray="5,5" />
                     </svg>
                 `);
 
@@ -229,7 +229,7 @@ const uploadHandler = [
             const fullH = pHeight + (borderSize + gapSize) * 2;
             
             // On 1800x1200 (6x4 Landscape)
-            const interGapX = 8; 
+            const interGapX = 4; 
             const interGapY = 30; 
             const totalW = (fullW * 4) + (interGapX * 3);
             const totalH = (fullH * 2) + interGapY;
@@ -255,7 +255,7 @@ const uploadHandler = [
             // 4x6 inches at 300 DPI is 1200x1800 or 1800x1200
             const targetW = isLandscape ? 1800 : 1200;
             const targetH = isLandscape ? 1200 : 1800;
-            const margin = 25; // Smaller uniform margin (approx 2mm)
+            const margin = 40; // Approx 3.4mm margin
 
             finalOutput = sharp(photoBuffer)
                 .rotate()
@@ -283,7 +283,7 @@ const uploadHandler = [
             const fullW = pWidth + (borderSize + gapSize) * 2;
             const fullH = pHeight + (borderSize + gapSize) * 2;
             
-            const interGapX = 8; 
+            const interGapX = 4; 
             const interGapY = 30; 
             const totalW = (fullW * 4) + (interGapX * 3);
             const totalH = (fullH * 2) + interGapY;
