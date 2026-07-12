@@ -92,7 +92,7 @@ const uploadHandler = [
             const pWidth = 413; // 3.5cm
             const pHeight = 531; // 4.5cm
             const borderSize = 2;
-            const gapSize = 10; 
+            const gapSize = 15; 
 
             // Helper to process a single photo
             const processPhoto = async (file) => {
@@ -171,7 +171,7 @@ const uploadHandler = [
                 
                 const svgBorder = Buffer.from(`
                     <svg width="${w}" height="${h}">
-                        <rect x="5" y="5" width="${w-10}" height="${h-10}" fill="none" stroke="#000000" stroke-width="1" stroke-dasharray="4,4" />
+                        <rect x="0.5" y="0.5" width="${w-1}" height="${h-1}" fill="none" stroke="#000000" stroke-width="1" stroke-dasharray="6,4" />
                     </svg>
                 `);
 
@@ -229,19 +229,19 @@ const uploadHandler = [
             const fullH = pHeight + (borderSize + gapSize) * 2;
             
             // On 1800x1200 (6x4 Landscape)
-            const interGapX = 8; 
-            const interGapY = 20; 
-            const totalW = (fullW * 4) + (interGapX * 3);
-            const totalH = (fullH * 2) + interGapY;
+            const interGapX = 0; 
+            const interGapY = 0; 
+            const totalW = (fullW * 4);
+            const totalH = (fullH * 2);
 
             const marginX = Math.floor((sheetWidth - totalW) / 2);
             const marginY = Math.floor((sheetHeight - totalH) / 2);
 
             for (let i = 0; i < 4; i++) {
-                compositeArr.push({ input: photo1, top: marginY, left: marginX + i * (fullW + interGapX) });
+                compositeArr.push({ input: photo1, top: marginY, left: marginX + i * fullW });
             }
             for (let i = 0; i < 4; i++) {
-                compositeArr.push({ input: photo2, top: marginY + fullH + interGapY, left: marginX + i * (fullW + interGapX) });
+                compositeArr.push({ input: photo2, top: marginY + fullH, left: marginX + i * fullW });
             }
 
             finalOutput = sharp({
@@ -283,10 +283,10 @@ const uploadHandler = [
             const fullW = pWidth + (borderSize + gapSize) * 2;
             const fullH = pHeight + (borderSize + gapSize) * 2;
             
-            const interGapX = 8; 
-            const interGapY = 20; 
-            const totalW = (fullW * 4) + (interGapX * 3);
-            const totalH = (fullH * 2) + interGapY;
+            const interGapX = 0; 
+            const interGapY = 0; 
+            const totalW = (fullW * 4);
+            const totalH = (fullH * 2);
 
             const marginX = Math.floor((sheetWidth - totalW) / 2);
             const marginY = Math.floor((sheetHeight - totalH) / 2);
@@ -295,8 +295,8 @@ const uploadHandler = [
                 for (let col = 0; col < 4; col++) {
                     compositeArr.push({
                         input: photo,
-                        top: marginY + row * (fullH + interGapY),
-                        left: marginX + col * (fullW + interGapX)
+                        top: marginY + row * fullH,
+                        left: marginX + col * fullW
                     });
                 }
             }
