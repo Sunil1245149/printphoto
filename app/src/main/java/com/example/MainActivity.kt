@@ -143,12 +143,32 @@ fun MainNavigation(voiceManager: VoiceManager) {
         }
         composable("preview") {
             if (photoUris.isNotEmpty()) {
+                val launcher = rememberLauncherForActivityResult(
+                    contract = ActivityResultContracts.GetMultipleContents()
+                ) { uris ->
+                    if (uris.isNotEmpty()) {
+                        val encodedUri = Uri.encode(uris.first().toString())
+                        navController.navigate("edit_image/$encodedUri")
+                    }
+                }
+
                 PreviewScreen(
                     photoUris = photoUris,
                     viewModel = viewModel,
                     voiceManager = voiceManager,
                     onAddMore = {
-                        navController.navigate("camera")
+                        if (ContextCompat.checkSelfPermission(
+                                context,
+                                Manifest.permission.CAMERA
+                            ) == PackageManager.PERMISSION_GRANTED
+                        ) {
+                            navController.navigate("camera")
+                        } else {
+                            permissionLauncher.launch(Manifest.permission.CAMERA)
+                        }
+                    },
+                    onAddFromGallery = {
+                        launcher.launch("image/*")
                     },
                     onUploadSuccess = {
                         Toast.makeText(context, "Photos sent to print!", Toast.LENGTH_LONG).show()

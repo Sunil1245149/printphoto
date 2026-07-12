@@ -81,14 +81,10 @@ fun EditImageScreen(
     var showFilters by remember { mutableStateOf(false) }
     
     // Crop selection area (fractions 0f..1f of the displayed image)
-    var cropLeft by remember { mutableFloatStateOf(0.1f) }
-    var cropTop by remember { mutableFloatStateOf(0.1f) }
-    var cropRight by remember { mutableFloatStateOf(0.9f) }
-    var cropBottom by remember { 
-        val w = 0.8f
-        val h = w * (4.5f / 3.5f)
-        mutableFloatStateOf((0.1f + h).coerceAtMost(0.95f)) 
-    }
+    var cropLeft by remember { mutableFloatStateOf(0.175f) }
+    var cropTop by remember { mutableFloatStateOf(0.08f) }
+    var cropRight by remember { mutableFloatStateOf(0.825f) }
+    var cropBottom by remember { mutableFloatStateOf(0.915f) }
     
     val displayMetrics = context.resources.displayMetrics
 
@@ -213,10 +209,10 @@ fun EditImageScreen(
                     contrast = 1f
                     saturation = 1f
                     rotation = 0f
-                    cropLeft = 0.1f
-                    cropTop = 0.1f
-                    cropRight = 0.9f
-                    cropBottom = (0.1f + 0.8f * (4.5f / 3.5f)).coerceAtMost(0.95f)
+                    cropLeft = 0.175f
+                    cropTop = 0.08f
+                    cropRight = 0.825f
+                    cropBottom = 0.915f
                 }) {
                     Icon(Icons.Default.Refresh, contentDescription = "Reset")
                 }
@@ -324,7 +320,7 @@ fun EditImageScreen(
                             drawRect(Color.Transparent)
                         }
 
-                        // Yellow Border
+                        // White Border
                         val rectLeft = cropLeft * w
                         val rectTop = cropTop * h
                         val rectRight = cropRight * w
@@ -332,7 +328,7 @@ fun EditImageScreen(
                         
                         drawIntoCanvas { canvas ->
                             val paint = android.graphics.Paint().apply {
-                                color = android.graphics.Color.YELLOW
+                                color = android.graphics.Color.WHITE
                                 style = android.graphics.Paint.Style.STROKE
                                 strokeWidth = 10f // Thicker border
                             }
@@ -381,7 +377,7 @@ fun EditImageScreen(
     }
 }
 
-private fun cropCameraImage(context: android.content.Context, uri: Uri): Uri? {
+private fun cropCameraImage(context: android.content.Context, uri: Uri, viewWidth: Float, viewHeight: Float): Uri? {
     try {
         val inputStream = context.contentResolver.openInputStream(uri) ?: return null
         val originalBitmap = BitmapFactory.decodeStream(inputStream)
@@ -410,10 +406,9 @@ private fun cropCameraImage(context: android.content.Context, uri: Uri): Uri? {
         val bitmapW = rotatedBitmap.width.toFloat()
         val bitmapH = rotatedBitmap.height.toFloat()
         
-        // Use a more robust way to get current screen dimensions for the activity
-        val displayMetrics = context.resources.displayMetrics
-        val screenW = displayMetrics.widthPixels.toFloat()
-        val screenH = displayMetrics.heightPixels.toFloat()
+        // Use the actual view dimensions passed from the UI
+        val screenW = viewWidth
+        val screenH = viewHeight
         
         // We know the viewfinder is 65% of the width and at 1/3 height
         // We need to map this screen area to the bitmap pixels, considering CameraX FILL_CENTER
@@ -435,13 +430,14 @@ private fun cropCameraImage(context: android.content.Context, uri: Uri): Uri? {
             dy = (bitmapH * scale - screenH) / 2f
         }
         
-        // Viewfinder in screen pixels
+        // Viewfinder in screen pixels (from PassportOverlay logic)
         val vw = screenW * 0.65f
         val vh = vw * (4.5f / 3.5f)
         val vl = (screenW - vw) / 2f
-        val vt = (screenH - vh) / 3f
+        val vt = (screenH - vh) / 3f // Matches the 1/3 top offset in Overlay
         
         // Map screen viewfinder to bitmap pixels
+        // We use the same FILL_CENTER logic that PreviewView uses
         val cropL = (vl + dx) / scale
         val cropT = (vt + dy) / scale
         val cropW = vw / scale
@@ -449,10 +445,10 @@ private fun cropCameraImage(context: android.content.Context, uri: Uri): Uri? {
         
         val cropped = android.graphics.Bitmap.createBitmap(
             rotatedBitmap,
-            cropL.toInt().coerceIn(0, rotatedBitmap.width - 1),
-            cropT.toInt().coerceIn(0, rotatedBitmap.height - 1),
-            cropW.toInt().coerceIn(1, rotatedBitmap.width - cropL.toInt()),
-            cropH.toInt().coerceIn(1, rotatedBitmap.height - cropT.toInt())
+            cropL.toInt().coerceIn(0, (rotatedBitmap.width - 1).coerceAtLeast(0)),
+            cropT.toInt().coerceIn(0, (rotatedBitmap.height - 1).coerceAtLeast(0)),
+            cropW.toInt().coerceIn(1, (rotatedBitmap.width - cropL.toInt()).coerceAtLeast(1)),
+            cropH.toInt().coerceIn(1, (rotatedBitmap.height - cropT.toInt()).coerceAtLeast(1))
         )
         
         val file = File(context.cacheDir, "camera_crop_${System.currentTimeMillis()}.jpg")
@@ -782,10 +778,15 @@ fun CameraScreen(
     var torchEnabled by remember { mutableStateOf(false) }
     var zoomRatio by remember { mutableFloatStateOf(1f) }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+        val viewWidth = with(LocalDensity.current) { maxWidth.toPx() }
+        val viewHeight = with(LocalDensity.current) { maxHeight.toPx() }
+
         AndroidView(
             factory = { ctx ->
-                val previewView = PreviewView(ctx)
+                val previewView = PreviewView(ctx).apply {
+                    scaleType = PreviewView.ScaleType.FILL_CENTER
+                }
                 val cameraProviderFuture = androidx.camera.lifecycle.ProcessCameraProvider.getInstance(ctx)
                 cameraProviderFuture.addListener({
                     val cameraProvider = cameraProviderFuture.get()
@@ -892,7 +893,7 @@ fun CameraScreen(
                         override fun onImageSaved(output: ImageCapture.OutputFileResults) {
                             ContextCompat.getMainExecutor(context).execute {
                                 val savedUri = Uri.fromFile(file)
-                                val croppedUri = cropCameraImage(context, savedUri)
+                                val croppedUri = cropCameraImage(context, savedUri, viewWidth, viewHeight)
                                 onPhotoCaptured(croppedUri ?: savedUri)
                             }
                         }
@@ -922,6 +923,7 @@ fun PreviewScreen(
     viewModel: PassportViewModel,
     voiceManager: VoiceManager,
     onAddMore: () -> Unit,
+    onAddFromGallery: () -> Unit,
     onUploadSuccess: () -> Unit,
     onBack: () -> Unit
 ) {
@@ -1009,9 +1011,6 @@ fun PreviewScreen(
                 isSelected = selectedLayout == "2x4",
                 onClick = { 
                     selectedLayout = "2x4"
-                    if (photoUris.size < 2) {
-                        onAddMore()
-                    }
                 },
                 modifier = Modifier.weight(1f)
             )
@@ -1027,14 +1026,29 @@ fun PreviewScreen(
         Spacer(modifier = Modifier.height(8.dp))
 
         if (selectedLayout == "2x4" && photoUris.size < 2) {
-            OutlinedButton(
-                onClick = onAddMore,
-                modifier = Modifier.fillMaxWidth().height(56.dp),
-                shape = RoundedCornerShape(16.dp)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Icon(Icons.Default.Add, contentDescription = null)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Add Second Photo")
+                OutlinedButton(
+                    onClick = onAddMore,
+                    modifier = Modifier.weight(1f).height(56.dp),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Icon(Icons.Default.CameraAlt, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Capture 2nd", fontSize = 12.sp)
+                }
+                
+                OutlinedButton(
+                    onClick = onAddFromGallery,
+                    modifier = Modifier.weight(1f).height(56.dp),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Icon(Icons.Default.PhotoLibrary, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Upload 2nd", fontSize = 12.sp)
+                }
             }
             Spacer(modifier = Modifier.height(16.dp))
         }
