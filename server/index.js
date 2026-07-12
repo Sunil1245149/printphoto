@@ -229,7 +229,7 @@ const uploadHandler = [
             const fullH = pHeight + (borderSize + gapSize) * 2;
             
             // On 1800x1200 (6x4 Landscape)
-            const interGapX = 10; 
+            const interGapX = 8; 
             const interGapY = 30; 
             const totalW = (fullW * 4) + (interGapX * 3);
             const totalH = (fullH * 2) + interGapY;
@@ -283,7 +283,7 @@ const uploadHandler = [
             const fullW = pWidth + (borderSize + gapSize) * 2;
             const fullH = pHeight + (borderSize + gapSize) * 2;
             
-            const interGapX = 10; 
+            const interGapX = 8; 
             const interGapY = 30; 
             const totalW = (fullW * 4) + (interGapX * 3);
             const totalH = (fullH * 2) + interGapY;
