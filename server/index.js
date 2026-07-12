@@ -89,8 +89,8 @@ const uploadHandler = [
 
             const sheetWidth = 1800; // 6 inch at 300 DPI
             const sheetHeight = 1200; // 4 inch at 300 DPI
-            const pWidth = 300; 
-            const pHeight = 400; 
+            const pWidth = 370; 
+            const pHeight = 485; 
             const borderSize = 2;
             const gapSize = 15; 
 
