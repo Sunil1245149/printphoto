@@ -64,10 +64,12 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.ClipOp
+import kotlinx.coroutines.launch
 
 @Composable
 fun EditImageScreen(
     uri: Uri,
+    geminiViewModel: GeminiViewModel,
     onSave: (Uri) -> Unit,
     onBack: () -> Unit
 ) {
@@ -79,6 +81,10 @@ fun EditImageScreen(
     var saturation by remember { mutableFloatStateOf(1f) }
     var rotation by remember { mutableFloatStateOf(0f) }
     var showFilters by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    
+    val isEnhancing = geminiViewModel.isEnhancing
+    val enhancementError = geminiViewModel.enhancementError
     
     // Crop selection area (fractions 0f..1f of the displayed image)
     var cropLeft by remember { mutableFloatStateOf(0.175f) }
@@ -216,8 +222,36 @@ fun EditImageScreen(
                 }) {
                     Icon(Icons.Default.Refresh, contentDescription = "Reset")
                 }
+
+                IconButton(
+                    onClick = {
+                        scope.launch {
+                            geminiViewModel.enhanceImage(context, uri)
+                        }
+                    },
+                    enabled = !isEnhancing
+                ) {
+                    if (isEnhancing) {
+                        CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+                    } else {
+                        Icon(
+                            Icons.Default.AutoFixHigh,
+                            contentDescription = "AI Enhance",
+                            tint = if (geminiViewModel.apiKey.isNotBlank()) MaterialTheme.colorScheme.primary else Color.Gray
+                        )
+                    }
+                }
             }
             
+            if (enhancementError != null) {
+                Text(
+                    text = enhancementError,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.labelSmall,
+                    modifier = Modifier.padding(horizontal = 8.dp)
+                )
+            }
+
             if (showFilters) {
                 Spacer(modifier = Modifier.height(4.dp))
                 Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -594,7 +628,8 @@ fun HomeScreen(
     onCaptureClick: () -> Unit,
     onPortalClick: () -> Unit,
     onGalleryClick: (List<Uri>) -> Unit,
-    onPingClick: () -> Unit = {}
+    onPingClick: () -> Unit = {},
+    onSettingsClick: () -> Unit = {}
 ) {
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetMultipleContents()
@@ -644,7 +679,10 @@ fun HomeScreen(
                     
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         IconButton(onClick = onPortalClick) {
-                            Icon(Icons.Default.Settings, contentDescription = "Merchant Portal", tint = MaterialTheme.colorScheme.primary)
+                            Icon(Icons.Default.Language, contentDescription = "Portal", tint = MaterialTheme.colorScheme.primary)
+                        }
+                        IconButton(onClick = onSettingsClick) {
+                            Icon(Icons.Default.Settings, contentDescription = "Settings", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 }

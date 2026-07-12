@@ -51,6 +51,7 @@ class MainActivity : ComponentActivity() {
 fun MainNavigation(voiceManager: VoiceManager) {
     val navController = rememberNavController()
     val viewModel: PassportViewModel = viewModel()
+    val geminiViewModel: GeminiViewModel = viewModel()
     val context = androidx.compose.ui.platform.LocalContext.current
     
     var photoUris by remember { mutableStateOf<List<Pair<Uri, Boolean>>>(emptyList()) }
@@ -110,7 +111,16 @@ fun MainNavigation(voiceManager: VoiceManager) {
                 },
                 onPingClick = {
                     viewModel.pingServer(context)
+                },
+                onSettingsClick = {
+                    navController.navigate("settings")
                 }
+            )
+        }
+        composable("settings") {
+            SettingsScreen(
+                viewModel = geminiViewModel,
+                onBack = { navController.popBackStack() }
             )
         }
         composable("camera") {
@@ -129,6 +139,7 @@ fun MainNavigation(voiceManager: VoiceManager) {
             val uri = Uri.parse(uriString)
             EditImageScreen(
                 uri = uri,
+                geminiViewModel = geminiViewModel,
                 onSave = { editedUri ->
                     photoUris = photoUris + (editedUri to false)
                     navController.navigate("preview") {
