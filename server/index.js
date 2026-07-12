@@ -89,10 +89,10 @@ const uploadHandler = [
 
             const sheetWidth = 1800; // 6 inch at 300 DPI
             const sheetHeight = 1200; // 4 inch at 300 DPI
-            const pWidth = 370; 
-            const pHeight = 485; 
+            const pWidth = 380; 
+            const pHeight = 500; 
             const borderSize = 2;
-            const gapSize = 15; 
+            const gapSize = 25; 
 
             // Helper to process a single photo
             const processPhoto = async (file) => {
@@ -171,7 +171,7 @@ const uploadHandler = [
                 
                 const svgBorder = Buffer.from(`
                     <svg width="${w}" height="${h}">
-                        <rect x="1" y="1" width="${w-2}" height="${h-2}" fill="none" stroke="#000000" stroke-width="1.5" stroke-dasharray="6,4" />
+                        <rect x="2" y="2" width="${w-4}" height="${h-4}" fill="none" stroke="#aaaaaa" stroke-width="1" stroke-dasharray="2,8" />
                     </svg>
                 `);
 
