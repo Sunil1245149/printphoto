@@ -89,10 +89,10 @@ const uploadHandler = [
 
             const sheetWidth = 1800; // 6 inch at 300 DPI
             const sheetHeight = 1200; // 4 inch at 300 DPI
-            const pWidth = 360; 
-            const pHeight = 475; 
+            const pWidth = 340; 
+            const pHeight = 450; 
             const borderSize = 2;
-            const gapSize = 25; 
+            const gapSize = 30; 
 
             // Helper to process a single photo
             const processPhoto = async (file) => {
@@ -214,17 +214,17 @@ const uploadHandler = [
             const sW = 1200;
             const sH = 1800;
             
-            const totalW = (fullW * 2);
-            const totalH = (fullH * 2);
+            const totalW = (fullW * 2) + gapSize;
+            const totalH = (fullH * 2) + gapSize;
 
             const marginX = Math.floor((sW - totalW) / 2);
             const marginY = Math.floor((sH - totalH) / 2);
 
             compositeArr = [
                 { input: photo, top: marginY, left: marginX },
-                { input: photo, top: marginY, left: marginX + fullW },
-                { input: photo, top: marginY + fullH, left: marginX },
-                { input: photo, top: marginY + fullH, left: marginX + fullW }
+                { input: photo, top: marginY, left: marginX + fullW + gapSize },
+                { input: photo, top: marginY + fullH + gapSize, left: marginX },
+                { input: photo, top: marginY + fullH + gapSize, left: marginX + fullW + gapSize }
             ];
             
             finalOutput = sharp({

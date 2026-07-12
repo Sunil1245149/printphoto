@@ -47,6 +47,10 @@ import androidx.compose.foundation.gestures.transformable
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.foundation.border
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
@@ -67,25 +71,27 @@ fun EditImageScreen(
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
+    val density = LocalDensity.current
     var bitmap by remember { mutableStateOf<android.graphics.Bitmap?>(null) }
     var brightness by remember { mutableFloatStateOf(1f) }
     var contrast by remember { mutableFloatStateOf(1f) }
     var saturation by remember { mutableFloatStateOf(1f) }
     var rotation by remember { mutableFloatStateOf(0f) }
     
-    // Zoom and Pan
-    var scale by remember { mutableFloatStateOf(1f) }
-    var offset by remember { mutableStateOf(Offset.Zero) }
+    // Crop selection area (fractions 0f..1f of the displayed image)
+    var cropLeft by remember { mutableFloatStateOf(0.1f) }
+    var cropTop by remember { mutableFloatStateOf(0.1f) }
+    var cropRight by remember { mutableFloatStateOf(0.9f) }
+    var cropBottom by remember { mutableFloatStateOf(0.9f) }
+    
+    val displayMetrics = context.resources.displayMetrics
 
-    val lifecycleOwner = LocalLifecycleOwner.current
-
-    LaunchedEffect(uri) {
+    LaunchedEffect(key1 = uri) {
         kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
             try {
                 val inputStream = context.contentResolver.openInputStream(uri)
                 val original = BitmapFactory.decodeStream(inputStream)
                 
-                // Initial rotation handling from EXIF if needed
                 val exifRotation = try {
                     context.contentResolver.openInputStream(uri)?.use { input ->
                         val exifInterface = androidx.exifinterface.media.ExifInterface(input)
@@ -114,23 +120,16 @@ fun EditImageScreen(
         val b = (brightness - 1f) * 255f
         val c = contrast
         val t = (1.0f - c) * 128f
-        
-        val cm = ColorMatrix(floatArrayOf(
+        val cm = androidx.compose.ui.graphics.ColorMatrix(floatArrayOf(
             c, 0f, 0f, 0f, b + t,
             0f, c, 0f, 0f, b + t,
             0f, 0f, c, 0f, b + t,
             0f, 0f, 0f, 1f, 0f
         ))
-        
-        // Apply saturation
-        val saturationMatrix = ColorMatrix().apply { setToSaturation(saturation) }
+        val saturationMatrix = androidx.compose.ui.graphics.ColorMatrix().apply { setToSaturation(saturation) }
         cm.timesAssign(saturationMatrix)
         cm
     }
-
-    val displayMetrics = context.resources.displayMetrics
-    val screenWidth = displayMetrics.widthPixels / displayMetrics.density
-    val screenHeight = displayMetrics.heightPixels / displayMetrics.density
 
     Scaffold(
         topBar = {
@@ -145,22 +144,28 @@ fun EditImageScreen(
                 IconButton(onClick = onBack) {
                     Icon(Icons.Default.Close, contentDescription = "Cancel")
                 }
-                Text("Edit Photo", fontWeight = FontWeight.Bold)
+                Text("Crop Photo", fontWeight = FontWeight.Bold)
                 TextButton(onClick = {
                     val currentBitmap = bitmap ?: return@TextButton
                     
-                    // Perform Save
-                    val editedUri = saveEditedImage(
+                    val bitmapW = if (rotation % 180f == 0f) currentBitmap.width.toFloat() else currentBitmap.height.toFloat()
+                    val bitmapH = if (rotation % 180f == 0f) currentBitmap.height.toFloat() else currentBitmap.width.toFloat()
+                    
+                    val containerW = displayMetrics.widthPixels.toFloat()
+                    val containerH = (displayMetrics.heightPixels - 350 * density.density) 
+
+                    val scale = Math.min(containerW / bitmapW, containerH / bitmapH)
+                    val displayedW = bitmapW * scale
+                    val displayedH = bitmapH * scale
+
+                    val editedUri = saveEditedImageWithCrop(
                         context, 
                         currentBitmap, 
+                        cropLeft, cropTop, cropRight, cropBottom,
                         brightness, 
                         contrast, 
                         saturation,
-                        rotation, 
-                        scale, 
-                        offset,
-                        screenWidth * displayMetrics.density,
-                        screenHeight * displayMetrics.density
+                        rotation
                     )
                     if (editedUri != null) {
                         onSave(editedUri)
@@ -178,7 +183,6 @@ fun EditImageScreen(
                     .padding(16.dp)
                     .navigationBarsPadding()
             ) {
-                // Controls
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceEvenly
@@ -194,8 +198,10 @@ fun EditImageScreen(
                         contrast = 1f
                         saturation = 1f
                         rotation = 0f
-                        scale = 1f
-                        offset = Offset.Zero
+                        cropLeft = 0.1f
+                        cropTop = 0.1f
+                        cropRight = 0.9f
+                        cropBottom = 0.9f
                     }) {
                         Icon(Icons.Default.Refresh, contentDescription = "Reset")
                     }
@@ -205,32 +211,15 @@ fun EditImageScreen(
                 
                 Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Text("Bright", style = MaterialTheme.typography.labelSmall, modifier = Modifier.width(50.dp))
-                    Slider(
-                        value = brightness,
-                        onValueChange = { brightness = it },
-                        valueRange = 0.5f..1.5f,
-                        modifier = Modifier.weight(1f)
-                    )
+                    Slider(value = brightness, onValueChange = { brightness = it }, valueRange = 0.5f..1.5f, modifier = Modifier.weight(1f))
                 }
-
                 Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Text("Contrast", style = MaterialTheme.typography.labelSmall, modifier = Modifier.width(50.dp))
-                    Slider(
-                        value = contrast,
-                        onValueChange = { contrast = it },
-                        valueRange = 0.5f..1.5f,
-                        modifier = Modifier.weight(1f)
-                    )
+                    Slider(value = contrast, onValueChange = { contrast = it }, valueRange = 0.5f..1.5f, modifier = Modifier.weight(1f))
                 }
-
                 Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Text("Colors", style = MaterialTheme.typography.labelSmall, modifier = Modifier.width(50.dp))
-                    Slider(
-                        value = saturation,
-                        onValueChange = { saturation = it },
-                        valueRange = 0f..2f,
-                        modifier = Modifier.weight(1f)
-                    )
+                    Slider(value = saturation, onValueChange = { saturation = it }, valueRange = 0f..2f, modifier = Modifier.weight(1f))
                 }
             }
         }
@@ -239,149 +228,195 @@ fun EditImageScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .background(Color.Black)
-                .pointerInput(Unit) {
-                    detectTransformGestures { _, pan, zoom, _ ->
-                        scale *= zoom
-                        offset += pan
-                    }
-                },
+                .background(Color.Black),
             contentAlignment = Alignment.Center
         ) {
-            val screenW = maxWidth
-            val screenH = maxHeight
-
-            bitmap?.let { b ->
-                val imageBitmap = b.asImageBitmap()
-                Image(
-                    bitmap = imageBitmap,
-                    contentDescription = null,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .graphicsLayer(
-                            scaleX = scale,
-                            scaleY = scale,
-                            translationX = offset.x,
-                            translationY = offset.y,
-                            rotationZ = rotation
-                        ),
-                    colorFilter = ColorFilter.colorMatrix(colorMatrix),
-                    contentScale = ContentScale.Fit
-                )
-            }
+            val containerWidth = maxWidth
+            val containerHeight = maxHeight
             
-            // Helpful Guide Overlay (Passport Size Aspect Ratio)
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth(0.7f)
-                    .aspectRatio(3.5f / 4.5f)
-                    .background(Color.Transparent)
-                    .clip(RoundedCornerShape(4.dp))
-                    .align(Alignment.Center)
-            ) {
-                // Border guide
-                Canvas(modifier = Modifier.fillMaxSize()) {
-                    val dashPathEffect = android.graphics.DashPathEffect(floatArrayOf(15f, 10f), 0f)
-                    drawIntoCanvas { canvas ->
-                        val paint = android.graphics.Paint().apply {
-                            color = android.graphics.Color.YELLOW // Brighter color
-                            style = android.graphics.Paint.Style.STROKE
-                            strokeWidth = 6f // Thicker line
-                            pathEffect = dashPathEffect
+            bitmap?.let { b ->
+                val imageBitmap = remember(b, rotation) {
+                    if (rotation == 0f) b.asImageBitmap()
+                    else {
+                        val matrix = Matrix().apply { postRotate(rotation) }
+                        android.graphics.Bitmap.createBitmap(b, 0, 0, b.width, b.height, matrix, true).asImageBitmap()
+                    }
+                }
+                
+                val bitmapW = imageBitmap.width.toFloat()
+                val bitmapH = imageBitmap.height.toFloat()
+                val containerW = containerWidth.value * density.density
+                val containerH = containerHeight.value * density.density
+                
+                val scale = Math.min(containerW / bitmapW, containerH / bitmapH)
+                val displayedW_dp = (bitmapW * scale / density.density).dp
+                val displayedH_dp = (bitmapH * scale / density.density).dp
+                
+                Box(modifier = Modifier.size(displayedW_dp, displayedH_dp)) {
+                    Image(
+                        bitmap = imageBitmap,
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        colorFilter = ColorFilter.colorMatrix(colorMatrix),
+                        contentScale = ContentScale.Fit
+                    )
+                    
+                    // Selection Box
+                    Canvas(modifier = Modifier
+                        .fillMaxSize()
+                        .pointerInput(Unit) {
+                            detectDragGestures { change, dragAmount ->
+                                change.consume()
+                                val dx = dragAmount.x / (displayedW_dp.value * density.density)
+                                val dy = dragAmount.y / (displayedH_dp.value * density.density)
+                                
+                                val w = cropRight - cropLeft
+                                val h = cropBottom - cropTop
+                                
+                                cropLeft = (cropLeft + dx).coerceIn(0f, 1f - w)
+                                cropTop = (cropTop + dy).coerceIn(0f, 1f - h)
+                                cropRight = cropLeft + w
+                                cropBottom = cropTop + h
+                            }
                         }
-                        canvas.nativeCanvas.drawRect(0f, 0f, size.width, size.height, paint)
+                    ) {
+                        val w = size.width
+                        val h = size.height
+                        
+                        // Overlay Dimming
+                        drawRect(Color.Black.copy(alpha = 0.5f))
+                        
+                        // Clear Selection Area
+                        withTransform({
+                            val rectW = (cropRight - cropLeft) * w
+                            val rectH = (cropBottom - cropTop) * h
+                            clipRect(
+                                left = cropLeft * w,
+                                top = cropTop * h,
+                                right = cropRight * w,
+                                bottom = cropBottom * h,
+                                clipOp = androidx.compose.ui.graphics.ClipOp.Difference
+                            )
+                        }) {
+                            drawRect(Color.Transparent)
+                        }
+
+                        // Yellow Border
+                        val rectLeft = cropLeft * w
+                        val rectTop = cropTop * h
+                        val rectRight = cropRight * w
+                        val rectBottom = cropBottom * h
+                        
+                        drawIntoCanvas { canvas ->
+                            val paint = android.graphics.Paint().apply {
+                                color = android.graphics.Color.YELLOW
+                                style = android.graphics.Paint.Style.STROKE
+                                strokeWidth = 8f
+                            }
+                            canvas.nativeCanvas.drawRect(rectLeft, rectTop, rectRight, rectBottom, paint)
+                            
+                            // Corners
+                            val handleSize = 40f
+                            paint.style = android.graphics.Paint.Style.FILL
+                            canvas.nativeCanvas.drawCircle(rectLeft, rectTop, handleSize, paint)
+                            canvas.nativeCanvas.drawCircle(rectRight, rectTop, handleSize, paint)
+                            canvas.nativeCanvas.drawCircle(rectLeft, rectBottom, handleSize, paint)
+                            canvas.nativeCanvas.drawCircle(rectRight, rectBottom, handleSize, paint)
+                        }
+                    }
+                    
+                    // Invisible Corner Handles for Dragging
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        // Top Left Handle
+                        Box(modifier = Modifier
+                            .offset((cropLeft * displayedW_dp.value).dp - 20.dp, (cropTop * displayedH_dp.value).dp - 20.dp)
+                            .size(40.dp)
+                            .pointerInput(Unit) {
+                                detectDragGestures { change, dragAmount ->
+                                    change.consume()
+                                    cropLeft = (cropLeft + dragAmount.x / (displayedW_dp.value * density.density)).coerceIn(0f, cropRight - 0.1f)
+                                    cropTop = (cropTop + dragAmount.y / (displayedH_dp.value * density.density)).coerceIn(0f, cropBottom - 0.1f)
+                                }
+                            }
+                        )
+                        // Bottom Right Handle
+                        Box(modifier = Modifier
+                            .offset((cropRight * displayedW_dp.value).dp - 20.dp, (cropBottom * displayedH_dp.value).dp - 20.dp)
+                            .size(40.dp)
+                            .pointerInput(Unit) {
+                                detectDragGestures { change, dragAmount ->
+                                    change.consume()
+                                    cropRight = (cropRight + dragAmount.x / (displayedW_dp.value * density.density)).coerceIn(cropLeft + 0.1f, 1f)
+                                    cropBottom = (cropBottom + dragAmount.y / (displayedH_dp.value * density.density)).coerceIn(cropTop + 0.1f, 1f)
+                                }
+                            }
+                        )
                     }
                 }
             }
-            
-            Text(
-                "Pinch to zoom & drag to align",
-                color = Color.White.copy(alpha = 0.6f),
-                style = MaterialTheme.typography.labelSmall,
-                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 16.dp)
-            )
         }
     }
 }
 
-private fun saveEditedImage(
+private fun saveEditedImageWithCrop(
     context: android.content.Context,
-    bitmap: android.graphics.Bitmap,
+    originalBitmap: android.graphics.Bitmap,
+    cropLeft: Float,
+    cropTop: Float,
+    cropRight: Float,
+    cropBottom: Float,
     brightness: Float,
     contrast: Float,
     saturation: Float,
-    rotation: Float,
-    scale: Float,
-    offset: Offset,
-    screenWidthPx: Float,
-    screenHeightPx: Float
+    rotation: Float
 ): Uri? {
     try {
-        // Create a resulting bitmap that matches the visual state of the guide box.
-        // The guide box is 70% width, aspect 3.5:4.5
-        val guideWidth = screenWidthPx * 0.7f
-        val guideHeight = guideWidth * (4.5f / 3.5f)
+        val rotatedBitmap = if (rotation == 0f) originalBitmap else {
+            val matrix = Matrix().apply { postRotate(rotation) }
+            android.graphics.Bitmap.createBitmap(originalBitmap, 0, 0, originalBitmap.width, originalBitmap.height, matrix, true)
+        }
         
-        // We want the output to be high res (e.g. 1200px width)
-        val outputScale = 1200f / guideWidth
-        val targetWidth = (guideWidth * outputScale).toInt()
-        val targetHeight = (guideHeight * outputScale).toInt()
+        val bitmapW = rotatedBitmap.width.toFloat()
+        val bitmapH = rotatedBitmap.height.toFloat()
         
+        val leftPx = cropLeft * bitmapW
+        val topPx = cropTop * bitmapH
+        val widthPx = (cropRight - cropLeft) * bitmapW
+        val heightPx = (cropBottom - cropTop) * bitmapH
+        
+        val cropped = android.graphics.Bitmap.createBitmap(
+            rotatedBitmap, 
+            leftPx.toInt().coerceIn(0, bitmapW.toInt() - 1), 
+            topPx.toInt().coerceIn(0, bitmapH.toInt() - 1), 
+            widthPx.toInt().coerceIn(1, bitmapW.toInt() - leftPx.toInt()), 
+            heightPx.toInt().coerceIn(1, bitmapH.toInt() - topPx.toInt())
+        )
+        
+        val targetWidth = 1200
+        val targetHeight = (targetWidth * (4.5f / 3.5f)).toInt()
         val result = android.graphics.Bitmap.createBitmap(targetWidth, targetHeight, android.graphics.Bitmap.Config.ARGB_8888)
         val canvas = AndroidCanvas(result)
-        canvas.drawColor(android.graphics.Color.WHITE)
         
-        val matrix = Matrix()
+        val paint = Paint().apply {
+            isAntiAlias = true
+            isFilterBitmap = true
+            val cm = android.graphics.ColorMatrix()
+            val b = (brightness - 1f) * 255f
+            val c = contrast
+            val t = (1.0f - c) * 128f
+            cm.set(floatArrayOf(
+                c, 0f, 0f, 0f, b + t,
+                0f, c, 0f, 0f, b + t,
+                0f, 0f, c, 0f, b + t,
+                0f, 0f, 0f, 1f, 0f
+            ))
+            val satMatrix = android.graphics.ColorMatrix()
+            satMatrix.setSaturation(saturation)
+            cm.postConcat(satMatrix)
+            colorFilter = android.graphics.ColorMatrixColorFilter(cm)
+        }
         
-        val bitmapW = bitmap.width.toFloat()
-        val bitmapH = bitmap.height.toFloat()
-        
-        // Base scale for ContentScale.Fit in the screen area
-        val fitScale = Math.min(screenWidthPx / bitmapW, screenHeightPx / bitmapH)
-        
-        // Apply transformations in order:
-        // 1. Move bitmap center to (0,0)
-        matrix.postTranslate(-bitmapW / 2f, -bitmapH / 2f)
-        // 2. Apply combined scales (Fit + User Zoom)
-        matrix.postScale(fitScale * scale, fitScale * scale)
-        // 3. Apply user rotation
-        matrix.postRotate(rotation)
-        // 4. Move to screen center + user pan offset
-        // Crucial: offset is in DP, must convert to pixels
-        val density = context.resources.displayMetrics.density
-        matrix.postTranslate(screenWidthPx / 2f + (offset.x * density), screenHeightPx / 2f + (offset.y * density))
-        
-        // 5. Shift relative to the guide box top-left
-        val guideLeft = (screenWidthPx - guideWidth) / 2f
-        val guideTop = (screenHeightPx - guideHeight) / 2f
-        matrix.postTranslate(-guideLeft, -guideTop)
-        
-        // 6. Scale up to the target output resolution
-        matrix.postScale(outputScale, outputScale)
-
-        val paint = Paint()
-        
-        // Replicate ColorMatrix logic
-        val cm = android.graphics.ColorMatrix()
-        val b = (brightness - 1f) * 255f
-        val c = contrast
-        val t = (1.0f - c) * 128f
-        cm.set(floatArrayOf(
-            c, 0f, 0f, 0f, b + t,
-            0f, c, 0f, 0f, b + t,
-            0f, 0f, c, 0f, b + t,
-            0f, 0f, 0f, 1f, 0f
-        ))
-        
-        val satMatrix = android.graphics.ColorMatrix()
-        satMatrix.setSaturation(saturation)
-        cm.postConcat(satMatrix)
-        
-        paint.colorFilter = android.graphics.ColorMatrixColorFilter(cm)
-        paint.isAntiAlias = true
-        paint.isFilterBitmap = true
-        
-        canvas.drawBitmap(bitmap, matrix, paint)
+        canvas.drawBitmap(cropped, null, android.graphics.Rect(0, 0, targetWidth, targetHeight), paint)
         
         val file = File(context.cacheDir, "edited_${System.currentTimeMillis()}.jpg")
         FileOutputStream(file).use { out ->
