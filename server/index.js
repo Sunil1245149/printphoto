@@ -90,18 +90,12 @@ const uploadHandler = [
             const sheetWidth = 1800; // 6 inch at 300 DPI
             const sheetHeight = 1200; // 4 inch at 300 DPI
             
-            // Base sizes for 8 copies (Further reduced)
-            let pWidth = 400; 
-            let pHeight = 520; 
+            // Base sizes for all copies (Same as 8 copies)
+            const pWidth = 380; 
+            const pHeight = 500; 
             
-            // Larger size for 4 copies (Further reduced)
-            if (layout === "4") {
-                pWidth = 520;
-                pHeight = 700;
-            }
-
             const borderSize = 2;
-            const gapSize = 15; 
+            const gapSize = 20; 
 
             // Helper to process a single photo
             const processPhoto = async (file) => {
