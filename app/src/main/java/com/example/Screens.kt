@@ -58,11 +58,12 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.pointer.pointerInput
 import android.graphics.Matrix
-import android.graphics.Paint
+import android.graphics.Paint as AndroidPaint
+import android.graphics.Canvas as AndroidCanvas
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.drawscope.withTransform
-import android.graphics.Canvas as AndroidCanvas
+import androidx.compose.ui.graphics.ClipOp
 
 @Composable
 fun EditImageScreen(
@@ -380,6 +381,97 @@ fun EditImageScreen(
     }
 }
 
+private fun cropCameraImage(context: android.content.Context, uri: Uri): Uri? {
+    try {
+        val inputStream = context.contentResolver.openInputStream(uri)
+        val originalBitmap = BitmapFactory.decodeStream(inputStream)
+        inputStream?.close()
+        
+        if (originalBitmap == null) return null
+
+        // Handle rotation if needed (CameraX usually saves it with correct orientation if metadata is used, 
+        // but let's check EXIF or just use it as is if it's already upright).
+        // For simplicity, we assume it's upright or handle it via Matrix.
+        
+        val bitmapW = originalBitmap.width.toFloat()
+        val bitmapH = originalBitmap.height.toFloat()
+        
+        // Viewfinder proportions (from CameraOverlay.kt)
+        // frameWidth = canvasWidth * 0.65f
+        // frameHeight = frameWidth * (4.5f / 3.5f)
+        // frameLeft = (canvasWidth - frameWidth) / 2
+        // frameTop = (canvasHeight - frameHeight) / 3f
+        
+        // We assume the camera preview FILLs the screen.
+        // If the sensor aspect ratio doesn't match the screen, there's cropping in the preview.
+        // To be safe, we'll just center-crop it to the viewfinder area.
+        
+        val displayMetrics = context.resources.displayMetrics
+        val screenW = displayMetrics.widthPixels.toFloat()
+        val screenH = displayMetrics.heightPixels.toFloat()
+        
+        val frameWidthN = 0.65f
+        val frameHeightN = frameWidthN * (4.5f / 3.5f) * (screenW / screenH)
+        
+        val leftN = (1f - frameWidthN) / 2f
+        val topN = 1f / 3f - (frameHeightN / 2f) // This is an approximation since frameTop = (screenH - frameH) / 3
+        
+        // More accurate mapping based on PassportOverlay logic:
+        val frameW_px = screenW * 0.65f
+        val frameH_px = frameW_px * (4.5f / 3.5f)
+        val frameL_px = (screenW - frameW_px) / 2f
+        val frameT_px = (screenH - frameH_px) / 3f
+        
+        val leftRatio = frameL_px / screenW
+        val topRatio = frameT_px / screenH
+        val widthRatio = frameW_px / screenW
+        val heightRatio = frameH_px / screenH
+        
+        // Adjust for sensor aspect ratio vs screen aspect ratio
+        // CameraX Fill_Center means the sensor is scaled to cover the screen.
+        val sensorRatio = bitmapW / bitmapH
+        val screenRatio = screenW / screenH
+        
+        var effectiveBitmapW = bitmapW
+        var effectiveBitmapH = bitmapH
+        var offsetX = 0f
+        var offsetY = 0f
+        
+        if (sensorRatio > screenRatio) {
+            // Sensor is wider than screen, sides are cropped in preview
+            effectiveBitmapW = bitmapH * screenRatio
+            offsetX = (bitmapW - effectiveBitmapW) / 2f
+        } else {
+            // Sensor is taller than screen, top/bottom are cropped in preview
+            effectiveBitmapH = bitmapW / screenRatio
+            offsetY = (bitmapH - effectiveBitmapH) / 2f
+        }
+        
+        val leftPx = offsetX + (leftRatio * effectiveBitmapW)
+        val topPx = offsetY + (topRatio * effectiveBitmapH)
+        val widthPx = widthRatio * effectiveBitmapW
+        val heightPx = heightRatio * effectiveBitmapH
+        
+        val cropped = android.graphics.Bitmap.createBitmap(
+            originalBitmap,
+            leftPx.toInt().coerceIn(0, originalBitmap.width - 1),
+            topPx.toInt().coerceIn(0, originalBitmap.height - 1),
+            widthPx.toInt().coerceIn(1, originalBitmap.width - leftPx.toInt()),
+            heightPx.toInt().coerceIn(1, originalBitmap.height - topPx.toInt())
+        )
+        
+        // Save cropped
+        val file = File(context.cacheDir, "camera_crop_${System.currentTimeMillis()}.jpg")
+        FileOutputStream(file).use { out ->
+            cropped.compress(android.graphics.Bitmap.CompressFormat.JPEG, 95, out)
+        }
+        return Uri.fromFile(file)
+    } catch (e: Exception) {
+        e.printStackTrace()
+        return null
+    }
+}
+
 private fun saveEditedImageWithCrop(
     context: android.content.Context,
     originalBitmap: android.graphics.Bitmap,
@@ -419,7 +511,7 @@ private fun saveEditedImageWithCrop(
         val result = android.graphics.Bitmap.createBitmap(targetWidth, targetHeight, android.graphics.Bitmap.Config.ARGB_8888)
         val canvas = AndroidCanvas(result)
         
-        val paint = Paint().apply {
+        val paint = AndroidPaint().apply {
             isAntiAlias = true
             isFilterBitmap = true
             val cm = android.graphics.ColorMatrix()
@@ -805,7 +897,9 @@ fun CameraScreen(
                     object : ImageCapture.OnImageSavedCallback {
                         override fun onImageSaved(output: ImageCapture.OutputFileResults) {
                             ContextCompat.getMainExecutor(context).execute {
-                                onPhotoCaptured(Uri.fromFile(file))
+                                val savedUri = Uri.fromFile(file)
+                                val croppedUri = cropCameraImage(context, savedUri)
+                                onPhotoCaptured(croppedUri ?: savedUri)
                             }
                         }
 

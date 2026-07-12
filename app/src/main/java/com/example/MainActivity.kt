@@ -116,8 +116,10 @@ fun MainNavigation(voiceManager: VoiceManager) {
         composable("camera") {
             CameraScreen(
                 onPhotoCaptured = { uri ->
-                    val encodedUri = Uri.encode(uri.toString())
-                    navController.navigate("edit_image/$encodedUri")
+                    photoUris = photoUris + (uri to true)
+                    navController.navigate("preview") {
+                        popUpTo("home") { inclusive = false }
+                    }
                 },
                 onBack = { navController.popBackStack() }
             )
