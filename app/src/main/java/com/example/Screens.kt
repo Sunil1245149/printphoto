@@ -77,12 +77,17 @@ fun EditImageScreen(
     var contrast by remember { mutableFloatStateOf(1f) }
     var saturation by remember { mutableFloatStateOf(1f) }
     var rotation by remember { mutableFloatStateOf(0f) }
+    var showFilters by remember { mutableStateOf(false) }
     
     // Crop selection area (fractions 0f..1f of the displayed image)
     var cropLeft by remember { mutableFloatStateOf(0.1f) }
     var cropTop by remember { mutableFloatStateOf(0.1f) }
     var cropRight by remember { mutableFloatStateOf(0.9f) }
-    var cropBottom by remember { mutableFloatStateOf(0.9f) }
+    var cropBottom by remember { 
+        val w = 0.8f
+        val h = w * (4.5f / 3.5f)
+        mutableFloatStateOf((0.1f + h).coerceAtMost(0.95f)) 
+    }
     
     val displayMetrics = context.resources.displayMetrics
 
@@ -145,8 +150,8 @@ fun EditImageScreen(
                     Icon(Icons.Default.Close, contentDescription = "Cancel")
                 }
                 Text("Crop Photo", fontWeight = FontWeight.Bold)
-                TextButton(onClick = {
-                    val currentBitmap = bitmap ?: return@TextButton
+                Button(onClick = {
+                    val currentBitmap = bitmap ?: return@Button
                     
                     val bitmapW = if (rotation % 180f == 0f) currentBitmap.width.toFloat() else currentBitmap.height.toFloat()
                     val bitmapH = if (rotation % 180f == 0f) currentBitmap.height.toFloat() else currentBitmap.width.toFloat()
@@ -171,7 +176,7 @@ fun EditImageScreen(
                         onSave(editedUri)
                     }
                 }) {
-                    Text("Done", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                    Text("DONE", fontWeight = FontWeight.ExtraBold)
                 }
             }
         },
@@ -194,21 +199,30 @@ fun EditImageScreen(
                         Icon(Icons.Default.RotateRight, contentDescription = "Rotate Right")
                     }
                     IconButton(onClick = {
-                        brightness = 1f
-                        contrast = 1f
-                        saturation = 1f
-                        rotation = 0f
-                        cropLeft = 0.1f
-                        cropTop = 0.1f
-                        cropRight = 0.9f
-                        cropBottom = 0.9f
-                    }) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Reset")
-                    }
+                    showFilters = !showFilters
+                }) {
+                    Icon(
+                        imageVector = if (showFilters) Icons.Default.Check else Icons.Default.Settings,
+                        contentDescription = "Toggle Filters"
+                    )
                 }
-                
+
+                IconButton(onClick = {
+                    brightness = 1f
+                    contrast = 1f
+                    saturation = 1f
+                    rotation = 0f
+                    cropLeft = 0.1f
+                    cropTop = 0.1f
+                    cropRight = 0.9f
+                    cropBottom = (0.1f + 0.8f * (4.5f / 3.5f)).coerceAtMost(0.95f)
+                }) {
+                    Icon(Icons.Default.Refresh, contentDescription = "Reset")
+                }
+            }
+            
+            if (showFilters) {
                 Spacer(modifier = Modifier.height(4.dp))
-                
                 Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Text("Bright", style = MaterialTheme.typography.labelSmall, modifier = Modifier.width(50.dp))
                     Slider(value = brightness, onValueChange = { brightness = it }, valueRange = 0.5f..1.5f, modifier = Modifier.weight(1f))
@@ -221,6 +235,14 @@ fun EditImageScreen(
                     Text("Colors", style = MaterialTheme.typography.labelSmall, modifier = Modifier.width(50.dp))
                     Slider(value = saturation, onValueChange = { saturation = it }, valueRange = 0f..2f, modifier = Modifier.weight(1f))
                 }
+            } else {
+                Text(
+                    "Select crop area and press 'Done'",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(vertical = 8.dp)
+                )
+            }
             }
         }
     ) { innerPadding ->
@@ -311,12 +333,12 @@ fun EditImageScreen(
                             val paint = android.graphics.Paint().apply {
                                 color = android.graphics.Color.YELLOW
                                 style = android.graphics.Paint.Style.STROKE
-                                strokeWidth = 8f
+                                strokeWidth = 10f // Thicker border
                             }
                             canvas.nativeCanvas.drawRect(rectLeft, rectTop, rectRight, rectBottom, paint)
                             
-                            // Corners
-                            val handleSize = 40f
+                            // Corners - Even bigger handles
+                            val handleSize = 60f
                             paint.style = android.graphics.Paint.Style.FILL
                             canvas.nativeCanvas.drawCircle(rectLeft, rectTop, handleSize, paint)
                             canvas.nativeCanvas.drawCircle(rectRight, rectTop, handleSize, paint)
@@ -325,29 +347,29 @@ fun EditImageScreen(
                         }
                     }
                     
-                    // Invisible Corner Handles for Dragging
+                    // Invisible Corner Handles for Dragging - Extra large touch area
                     Box(modifier = Modifier.fillMaxSize()) {
                         // Top Left Handle
                         Box(modifier = Modifier
-                            .offset((cropLeft * displayedW_dp.value).dp - 20.dp, (cropTop * displayedH_dp.value).dp - 20.dp)
-                            .size(40.dp)
+                            .offset((cropLeft * displayedW_dp.value).dp - 40.dp, (cropTop * displayedH_dp.value).dp - 40.dp)
+                            .size(80.dp)
                             .pointerInput(Unit) {
                                 detectDragGestures { change, dragAmount ->
                                     change.consume()
-                                    cropLeft = (cropLeft + dragAmount.x / (displayedW_dp.value * density.density)).coerceIn(0f, cropRight - 0.1f)
-                                    cropTop = (cropTop + dragAmount.y / (displayedH_dp.value * density.density)).coerceIn(0f, cropBottom - 0.1f)
+                                    cropLeft = (cropLeft + dragAmount.x / (displayedW_dp.value * density.density)).coerceIn(0f, cropRight - 0.05f)
+                                    cropTop = (cropTop + dragAmount.y / (displayedH_dp.value * density.density)).coerceIn(0f, cropBottom - 0.05f)
                                 }
                             }
                         )
                         // Bottom Right Handle
                         Box(modifier = Modifier
-                            .offset((cropRight * displayedW_dp.value).dp - 20.dp, (cropBottom * displayedH_dp.value).dp - 20.dp)
-                            .size(40.dp)
+                            .offset((cropRight * displayedW_dp.value).dp - 40.dp, (cropBottom * displayedH_dp.value).dp - 40.dp)
+                            .size(80.dp)
                             .pointerInput(Unit) {
                                 detectDragGestures { change, dragAmount ->
                                     change.consume()
-                                    cropRight = (cropRight + dragAmount.x / (displayedW_dp.value * density.density)).coerceIn(cropLeft + 0.1f, 1f)
-                                    cropBottom = (cropBottom + dragAmount.y / (displayedH_dp.value * density.density)).coerceIn(cropTop + 0.1f, 1f)
+                                    cropRight = (cropRight + dragAmount.x / (displayedW_dp.value * density.density)).coerceIn(cropLeft + 0.05f, 1f)
+                                    cropBottom = (cropBottom + dragAmount.y / (displayedH_dp.value * density.density)).coerceIn(cropTop + 0.05f, 1f)
                                 }
                             }
                         )
