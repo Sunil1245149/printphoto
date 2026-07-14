@@ -455,6 +455,7 @@
         }
 
         socket.on('job-received', (job) => {
+            currentJob = job; // Set currentJob immediately
             if (voiceEnabled) {
                 playTingDing();
                 speak("starting");

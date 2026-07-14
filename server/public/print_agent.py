@@ -148,10 +148,15 @@ def main():
                         param($sender, $e)
                         try {{
                             $graphics = $e.Graphics
-                            # Use full page area to avoid stretching and respect orientation
-                            $rect = $e.PageBounds
+                            $graphics.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
+                            $graphics.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::HighQuality
+                            $graphics.PixelOffsetMode = [System.Drawing.Drawing2D.PixelOffsetMode]::HighQuality
                             
-                            # Draw image to fill the paper exactly (4x6 area)
+                            # Use full page area
+                            $rect = $e.PageBounds
+                            Write-Host "Printing to area: $($rect.Width)x$($rect.Height) (Orientation: $($doc.DefaultPageSettings.Landscape))"
+                            
+                            # Draw image to fill the paper exactly
                             $graphics.DrawImage($img, 0, 0, $rect.Width, $rect.Height)
                             $e.HasMorePages = $false
                         }} catch {{

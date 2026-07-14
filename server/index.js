@@ -90,12 +90,13 @@ const uploadHandler = [
             const sheetWidth = 1800; // 6 inch at 300 DPI
             const sheetHeight = 1200; // 4 inch at 300 DPI
             
-            // Base sizes for all copies (Consistent and safe for printing)
-            const pWidth = 350; 
-            const pHeight = 450; 
+            // Base sizes for all copies (Standard India Passport size: 3.5cm x 4.5cm)
+            // At 300 DPI: 3.5 / 2.54 * 300 = 413, 4.5 / 2.54 * 300 = 531
+            const pWidth = 413; 
+            const pHeight = 531; 
             
-            const borderSize = 2;
-            const gapSize = 25; 
+            const borderSize = 1;
+            const gapSize = 30; 
 
             // Helper to process a single photo
             const processPhoto = async (file) => {
@@ -210,13 +211,14 @@ const uploadHandler = [
 
         if (layout === "4") {
             const photo = processedPhotos[0];
-            const fullW = pWidth + (borderSize + gapSize) * 2;
-            const fullH = pHeight + (borderSize + gapSize) * 2;
+            const fullW = pWidth + borderSize * 2;
+            const fullH = pHeight + borderSize * 2;
             
-            // 4 copies in Portrait orientation (1200x1800)
+            // 4 copies in Portrait orientation (4x6 Portrait)
             const sW = 1200;
             const sH = 1800;
             
+            // 2x2 grid
             const totalW = (fullW * 2) + gapSize;
             const totalH = (fullH * 2) + gapSize;
 
@@ -291,29 +293,31 @@ const uploadHandler = [
             compositeArr = []; 
         } else {
             const photo = processedPhotos[0];
-            const fullW = pWidth + (borderSize + gapSize) * 2;
-            const fullH = pHeight + (borderSize + gapSize) * 2;
+            const fullW = pWidth + borderSize * 2;
+            const fullH = pHeight + borderSize * 2;
             
-            const interGapX = 0; 
-            const interGapY = 0; 
-            const totalW = (fullW * 4);
-            const totalH = (fullH * 2);
+            // 8 copies in Landscape orientation (4x6 Landscape)
+            const sW = 1800;
+            const sH = 1200;
 
-            const marginX = Math.floor((sheetWidth - totalW) / 2);
-            const marginY = Math.floor((sheetHeight - totalH) / 2);
+            const totalW = (fullW * 4) + (gapSize * 3);
+            const totalH = (fullH * 2) + gapSize;
+
+            const marginX = Math.floor((sW - totalW) / 2);
+            const marginY = Math.floor((sH - totalH) / 2);
 
             for (let row = 0; row < 2; row++) {
                 for (let col = 0; col < 4; col++) {
                     compositeArr.push({
                         input: photo,
-                        top: marginY + row * fullH,
-                        left: marginX + col * fullW
+                        top: marginY + row * (fullH + gapSize),
+                        left: marginX + col * (fullW + gapSize)
                     });
                 }
             }
 
             finalOutput = sharp({
-                create: { width: 1800, height: 1200, channels: 4, background: { r: 255, g: 255, b: 255, alpha: 1 } }
+                create: { width: sW, height: sH, channels: 4, background: { r: 255, g: 255, b: 255, alpha: 1 } }
             });
         }
 
