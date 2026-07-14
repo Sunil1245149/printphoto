@@ -398,8 +398,11 @@
             }
         }
 
+        let jobStartTime = 0;
+
         function startProcessingTone() {
             if (processingInterval) return;
+            jobStartTime = Date.now();
             const audioContext = new (window.AudioContext || window.webkitAudioContext)();
             processingInterval = setInterval(() => {
                 const now = audioContext.currentTime;
@@ -460,12 +463,26 @@
         });
 
         socket.on('job-completed', (job) => {
-            stopProcessingTone();
-            if (voiceEnabled) {
-                speak("finished", job.layout);
+            const now = Date.now();
+            const elapsed = now - jobStartTime;
+            const minDuration = 60000; // 60 seconds
+            
+            const finalizeJob = () => {
+                stopProcessingTone();
+                if (voiceEnabled) {
+                    speak("finished", job.layout);
+                }
+                updatePreview(job, true);
+                refreshHistory();
+            };
+
+            if (jobStartTime > 0 && elapsed < minDuration) {
+                const waitTime = minDuration - elapsed;
+                console.log(`Waiting ${waitTime}ms before finishing processing tone...`);
+                setTimeout(finalizeJob, waitTime);
+            } else {
+                finalizeJob();
             }
-            updatePreview(job, true);
-            refreshHistory();
         });
 
         manualUpload.onchange = async () => {

@@ -106,33 +106,35 @@ def main():
                     f.write(response.content)
                 
                 print(f"✅ Saved: {file_path}")
-                print(f"🖨️  Sending to default printer...")
+                abs_path = os.path.abspath(file_path)
+                print(f"🖨️  Sending to default printer: {abs_path}")
                 
                 if os.name == 'nt': # Windows
-                    print(f"🖨️  Sending to default printer (Direct Automated)...")
-                    # Using PowerShell with System.Drawing to print silently without dialogs
+                    print(f"🖨️  Starting PowerShell print (Direct)...")
+                    # Escaping backslashes for PowerShell string
+                    escaped_path = abs_path.replace('\\', '\\\\')
                     ps_script = f"""
                     Add-Type -AssemblyName System.Drawing
-                    $path = '{file_path}'
-                    $printer = (Get-WmiObject -Query "Select * from Win32_Printer Where Default = True").Name
+                    $path = "{escaped_path}"
                     $doc = New-Object System.Drawing.Printing.PrintDocument
-                    $doc.PrinterSettings.PrinterName = $printer
+                    $doc.DocumentName = "Passport Photo Print"
                     $doc.add_PrintPage({{
-                        $img = [System.Drawing.Image]::FromFile($path)
-                        $area = $eventArgs.MarginBounds
-                        if ($img.Width / $img.Height -gt $area.Width / $area.Height) {{
-                            $width = $area.Width
-                            $height = $img.Height * $area.Width / $img.Width
-                        }} else {{
-                            $height = $area.Height
-                            $width = $img.Width * $area.Height / $img.Height
+                        try {{
+                            $img = [System.Drawing.Image]::FromFile($path)
+                            $graphics = $eventArgs.Graphics
+                            # Fill the page margin area
+                            $rect = $eventArgs.MarginBounds
+                            $graphics.DrawImage($img, $rect)
+                            $img.Dispose()
+                        }} catch {{
+                            Write-Error "Error drawing image: $_"
                         }}
-                        $eventArgs.Graphics.DrawImage($img, $area.X, $area.Y, $width, $height)
-                        $img.Dispose()
                     }})
                     $doc.Print()
                     """
-                    subprocess.run(["powershell", "-Command", ps_script], capture_output=True)
+                    result = subprocess.run(["powershell", "-Command", ps_script], capture_output=True, text=True)
+                    if result.stderr:
+                        print(f"❌ PowerShell Error: {result.stderr}")
                 else: # Linux/Mac
                     subprocess.run(["lp", file_path])
             else:
