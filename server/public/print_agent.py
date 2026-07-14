@@ -40,9 +40,20 @@ def main():
     # ---------------------------------------------------------
     # CONFIGURATION
     # ---------------------------------------------------------
-    # Note: Replace this with your actual Render URL if you have one
     DEFAULT_URL = "https://printphoto.onrender.com"
     
+    print_banner()
+    print(f"Suggested URL: {DEFAULT_URL}")
+    server_url = input(f"Enter Portal URL (Press Enter to use suggested): ").strip() or DEFAULT_URL
+    
+    if not server_url.startswith('http'):
+        if 'localhost' in server_url or '127.0.0.1' in server_url:
+            server_url = 'http://' + server_url
+        else:
+            server_url = 'https://' + server_url
+    if server_url.endswith('/'):
+        server_url = server_url[:-1]
+
     script_dir = os.path.dirname(os.path.abspath(__file__))
     DOWNLOAD_DIR = os.path.join(script_dir, "print_jobs")
 
@@ -157,13 +168,13 @@ def main():
                         print(f"✅ Print command sent successfully.")
                         # Notify server
                         try:
-                            requests.post(f"{SERVER_URL}/api/print-success", json={"jobId": job_id})
+                            requests.post(f"{server_url}/api/print-success", json={"jobId": job_id})
                         except Exception as e:
                             print(f"⚠️  Could not notify server: {e}")
                 else: # Linux/Mac
                     subprocess.run(["lp", file_path])
                     try:
-                        requests.post(f"{SERVER_URL}/api/print-success", json={"jobId": job_id})
+                        requests.post(f"{server_url}/api/print-success", json={"jobId": job_id})
                     except Exception as e:
                         print(f"⚠️  Could not notify server: {e}")
             else:
@@ -172,14 +183,7 @@ def main():
             print(f"❌ Printing Error: {e}")
 
     print_banner()
-    print(f"Suggested URL: {DEFAULT_URL}")
-    server_url = input(f"Enter Portal URL (Press Enter to use suggested): ").strip() or DEFAULT_URL
     
-    if not server_url.startswith('http'):
-        server_url = 'https://' + server_url
-    if server_url.endswith('/'):
-        server_url = server_url[:-1]
-
     try:
         print(f"\nChecking server: {server_url} ...")
         # Try a quick ping
