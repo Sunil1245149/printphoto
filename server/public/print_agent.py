@@ -117,24 +117,55 @@ def main():
                     Add-Type -AssemblyName System.Drawing
                     $doc = New-Object System.Drawing.Printing.PrintDocument
                     $doc.DocumentName = "Passport Photo Print"
+                    $img = [System.Drawing.Image]::FromFile("{escaped_path}")
+                    
+                    # Auto Orientation: Width > Height means 8 photos (Landscape), else 4 photos (Portrait)
+                    if ($img.Width -gt $img.Height) {{
+                        $doc.DefaultPageSettings.Landscape = $true
+                    }} else {{
+                        $doc.DefaultPageSettings.Landscape = $false
+                    }}
+                    
+                    # Ensure Color mode is enabled
+                    $doc.DefaultPageSettings.Color = $true
+                    
+                    # Set margins to 0 for full 4x6 printing
+                    $doc.DefaultPageSettings.Margins = New-Object System.Drawing.Printing.Margins(0,0,0,0)
+                    $doc.OriginAtMargins = $false
+                    
                     $doc.add_PrintPage({{
                         param($sender, $e)
                         try {{
-                            $img = [System.Drawing.Image]::FromFile("{escaped_path}")
-                            # Draw image to fill the printable area (MarginBounds)
-                            $e.Graphics.DrawImage($img, $e.MarginBounds)
-                            $img.Dispose()
+                            $graphics = $e.Graphics
+                            # Use full page area to avoid stretching and respect orientation
+                            $rect = $e.PageBounds
+                            
+                            # Draw image to fill the paper exactly (4x6 area)
+                            $graphics.DrawImage($img, 0, 0, $rect.Width, $rect.Height)
+                            $e.HasMorePages = $false
                         }} catch {{
                             Write-Error "Error in PrintPage: $_"
                         }}
                     }})
                     $doc.Print()
+                    $img.Dispose()
                     """
                     result = subprocess.run(["powershell", "-Command", ps_script], capture_output=True, text=True)
                     if result.stderr:
                         print(f"❌ PowerShell Error: {result.stderr}")
+                    else:
+                        print(f"✅ Print command sent successfully.")
+                        # Notify server
+                        try:
+                            requests.post(f"{SERVER_URL}/api/print-success", json={"jobId": job_id})
+                        except Exception as e:
+                            print(f"⚠️  Could not notify server: {e}")
                 else: # Linux/Mac
                     subprocess.run(["lp", file_path])
+                    try:
+                        requests.post(f"{SERVER_URL}/api/print-success", json={"jobId": job_id})
+                    except Exception as e:
+                        print(f"⚠️  Could not notify server: {e}")
             else:
                 print(f"❌ Download failed: HTTP {response.status_code}")
         except Exception as e:

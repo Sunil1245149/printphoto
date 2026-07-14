@@ -463,27 +463,21 @@
         });
 
         socket.on('job-completed', (job) => {
-            const now = Date.now();
-            const elapsed = now - jobStartTime;
-            const minDuration = 60000; // 60 seconds
-            
             // Show preview immediately
             updatePreview(job, true);
             refreshHistory();
+            // We wait for 'print-finished' from the local agent to stop tone and speak
+        });
 
-            const finalizeJob = () => {
-                stopProcessingTone();
-                if (voiceEnabled) {
-                    speak("finished", job.layout);
-                }
-            };
-
-            if (jobStartTime > 0 && elapsed < minDuration) {
-                const waitTime = minDuration - elapsed;
-                console.log(`Waiting ${waitTime}ms before finishing processing tone...`);
-                setTimeout(finalizeJob, waitTime);
-            } else {
-                finalizeJob();
+        socket.on('print-finished', (data) => {
+            console.log("Print confirmed by agent for job:", data.jobId);
+            stopProcessingTone();
+            
+            let layout = "8";
+            if (currentJob && currentJob.id == data.jobId) layout = currentJob.layout;
+            
+            if (voiceEnabled) {
+                speak("finished", layout);
             }
         });
 
@@ -544,18 +538,18 @@
             
             let message = "";
             if (text === "starting") {
-                message = "प्रिंट हो रहा है। कृपया इंतज़ार करें।";
+                message = "प्रिंटिंग सुरू झाली आहे. कृपया प्रतीक्षा करा.";
             } else if (text === "finished") {
-                let priceText = "पचास रुपये";
-                if (layout === "4") priceText = "पच्चीस रुपये";
+                let priceText = "पन्नास रुपये";
+                if (layout === "4") priceText = "पंचवीस रुपये";
                 
-                message = `प्रिंट हो गया है। इसका दाम ${priceText} है। काउंटर पर दो और अपनी फोटो लो।`;
+                message = `तुमची प्रिंट पूर्ण झाली आहे. याची किंमत ${priceText} आहे. कृपया काउंटरवर पैसे द्या आणि तुमचे फोटो घ्या. धन्यवाद.`;
             } else {
                 message = text;
             }
 
             const utterance = new SpeechSynthesisUtterance(message);
-            utterance.lang = 'hi-IN';
+            utterance.lang = 'mr-IN';
             utterance.rate = 0.9;
             window.speechSynthesis.speak(utterance);
         }

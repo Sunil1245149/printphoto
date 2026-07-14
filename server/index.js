@@ -368,6 +368,13 @@ app.post('/settings', (req, res) => {
     res.json({ success: true });
 });
 
+app.post('/api/print-success', (req, res) => {
+    const { jobId } = req.body;
+    console.log(`Print job ${jobId} reported as successful by local agent.`);
+    io.emit('print-finished', { jobId });
+    res.json({ success: true });
+});
+
 // Catch-all for 404s
 app.use((req, res) => {
     console.warn(`[404 NOT FOUND] ${req.method} ${req.url}`);
