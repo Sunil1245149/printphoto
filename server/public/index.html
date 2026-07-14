@@ -374,18 +374,19 @@
         const manualUpload = document.getElementById('manualUpload');
 
         let currentJob = null;
+        let processingInterval = null;
 
         function playTingDing() {
             try {
                 const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                const playBeep = (freq, startTime, duration) => {
+                const playBeep = (freq, startTime, duration, volume = 0.2) => {
                     const osc = audioContext.createOscillator();
                     const gain = audioContext.createGain();
                     osc.type = 'sine';
                     osc.connect(gain);
                     gain.connect(audioContext.destination);
                     osc.frequency.setValueAtTime(freq, startTime);
-                    gain.gain.setValueAtTime(0.2, startTime);
+                    gain.gain.setValueAtTime(volume, startTime);
                     gain.gain.exponentialRampToValueAtTime(0.01, startTime + duration);
                     osc.start(startTime);
                     osc.stop(startTime + duration);
@@ -394,6 +395,30 @@
                 playBeep(1100, audioContext.currentTime + 0.15, 0.2); // Ding
             } catch (e) {
                 console.error("Audio error:", e);
+            }
+        }
+
+        function startProcessingTone() {
+            if (processingInterval) return;
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            processingInterval = setInterval(() => {
+                const osc = audioContext.createOscillator();
+                const gain = audioContext.createGain();
+                osc.type = 'triangle';
+                osc.connect(gain);
+                gain.connect(audioContext.destination);
+                osc.frequency.setValueAtTime(440, audioContext.currentTime);
+                gain.gain.setValueAtTime(0.05, audioContext.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+                osc.start();
+                osc.stop(audioContext.currentTime + 0.5);
+            }, 800);
+        }
+
+        function stopProcessingTone() {
+            if (processingInterval) {
+                clearInterval(processingInterval);
+                processingInterval = null;
             }
         }
 
@@ -425,15 +450,22 @@
             if (voiceEnabled) {
                 playTingDing();
                 speak("starting");
+                setTimeout(startProcessingTone, 1000);
             }
         });
 
         socket.on('job-completed', (job) => {
+            stopProcessingTone();
             if (voiceEnabled) {
                 speak("finished", job.layout);
             }
             updatePreview(job, true);
             refreshHistory();
+            
+            // Auto-trigger browser print if enabled or just show dialog
+            setTimeout(() => {
+                window.print();
+            }, 2000);
         });
 
         manualUpload.onchange = async () => {
