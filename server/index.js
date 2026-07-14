@@ -340,6 +340,7 @@ const uploadHandler = [
         if (history.length > 50) history.pop();
 
         io.emit('job-completed', job);
+        io.emit('print_job', { url: job.preview, id: job.id, layout: job.layout });
 
         res.status(200).json({ success: true, jobId: timestamp });
     } catch (err) {

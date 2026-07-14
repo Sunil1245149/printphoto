@@ -366,7 +366,7 @@
     <script>
         const socket = io();
         let voiceEnabled = true;
-        let voiceLanguage = 'English';
+        let voiceLanguage = 'Hindi'; // Default to Hindi as per user request
 
         const historyList = document.getElementById('history-list');
         const previewArea = document.getElementById('preview-area');
@@ -375,9 +375,31 @@
 
         let currentJob = null;
 
+        function playTingDing() {
+            try {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const playBeep = (freq, startTime, duration) => {
+                    const osc = audioContext.createOscillator();
+                    const gain = audioContext.createGain();
+                    osc.type = 'sine';
+                    osc.connect(gain);
+                    gain.connect(audioContext.destination);
+                    osc.frequency.setValueAtTime(freq, startTime);
+                    gain.gain.setValueAtTime(0.2, startTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, startTime + duration);
+                    osc.start(startTime);
+                    osc.stop(startTime + duration);
+                };
+                playBeep(880, audioContext.currentTime, 0.2); // Ting
+                playBeep(1100, audioContext.currentTime + 0.15, 0.2); // Ding
+            } catch (e) {
+                console.error("Audio error:", e);
+            }
+        }
+
         socket.on('initial-data', (data) => {
             voiceEnabled = data.settings.voiceEnabled !== undefined ? data.settings.voiceEnabled : true;
-            voiceLanguage = data.settings.voiceLanguage || 'English';
+            voiceLanguage = data.settings.voiceLanguage || 'Hindi';
             voiceToggle.checked = voiceEnabled;
             updateLangUI(voiceLanguage);
             data.history.forEach(addJobToHistory);
@@ -400,11 +422,16 @@
         }
 
         socket.on('job-received', (job) => {
-            if (voiceEnabled) speak("New passport job processing");
+            if (voiceEnabled) {
+                playTingDing();
+                speak("starting");
+            }
         });
 
         socket.on('job-completed', (job) => {
-            if (voiceEnabled) speak("Printing ready");
+            if (voiceEnabled) {
+                speak("finished", job.layout);
+            }
             updatePreview(job, true);
             refreshHistory();
         });
@@ -461,19 +488,23 @@
             });
         }
 
-        function speak(text) {
+        function speak(text, layout = "8") {
             if (!voiceEnabled) return;
-            let message = text;
-            if (voiceLanguage === 'Hindi') {
-                if (text.includes("processing")) message = "नया फोटो प्रोसेसिंग हो रहा है";
-                if (text.includes("ready")) message = "प्रिंट तैयार है";
+            
+            let message = "";
+            if (text === "starting") {
+                message = "Print ho raha hai. Kripya intezaar karein.";
+            } else if (text === "finished") {
+                let priceText = "pachas rupaye";
+                if (layout === "4") priceText = "pachis rupaye";
+                
+                message = `Print ho gaya hai. Iska daam ${priceText} hai. Counter par do aur apni photo lo.`;
+            } else {
+                message = text;
             }
-            if (voiceLanguage === 'Marathi') {
-                if (text.includes("processing")) message = "नवीन फोटो प्रोसेस होत आहे";
-                if (text.includes("ready")) message = "प्रिंट तयार आहे";
-            }
+
             const utterance = new SpeechSynthesisUtterance(message);
-            if (voiceLanguage === 'Hindi') utterance.lang = 'hi-IN';
+            if (voiceLanguage === 'Hindi' || text === "starting" || text === "finished") utterance.lang = 'hi-IN';
             else if (voiceLanguage === 'Marathi') utterance.lang = 'mr-IN';
             else utterance.lang = 'en-US';
             window.speechSynthesis.speak(utterance);

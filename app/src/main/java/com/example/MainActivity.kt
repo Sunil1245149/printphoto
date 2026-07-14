@@ -23,11 +23,9 @@ import androidx.navigation.compose.rememberNavController
 import com.example.ui.theme.MyApplicationTheme
 
 class MainActivity : ComponentActivity() {
-    private lateinit var voiceManager: VoiceManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        voiceManager = VoiceManager(this)
         enableEdgeToEdge()
         setContent {
             MyApplicationTheme {
@@ -35,20 +33,15 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    MainNavigation(voiceManager)
+                    MainNavigation()
                 }
             }
         }
     }
-
-    override fun onDestroy() {
-        voiceManager.shutdown()
-        super.onDestroy()
-    }
 }
 
 @Composable
-fun MainNavigation(voiceManager: VoiceManager) {
+fun MainNavigation() {
     val navController = rememberNavController()
     val viewModel: PassportViewModel = viewModel()
     val geminiViewModel: GeminiViewModel = viewModel()
@@ -56,14 +49,6 @@ fun MainNavigation(voiceManager: VoiceManager) {
     
     var photoUris by remember { mutableStateOf<List<Pair<Uri, Boolean>>>(emptyList()) }
     var selectedLanguage by remember { mutableStateOf("English") }
-
-    LaunchedEffect(selectedLanguage) {
-        voiceManager.setLanguage(selectedLanguage)
-        val msgEng = "Language changed to $selectedLanguage"
-        val msgHi = "भाषा $selectedLanguage में बदल दी गई है"
-        val msgMr = "भाषा $selectedLanguage मध्ये बदलली आहे"
-        voiceManager.speak(msgEng, msgHi, msgMr)
-    }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -166,7 +151,7 @@ fun MainNavigation(voiceManager: VoiceManager) {
                 PreviewScreen(
                     photoUris = photoUris,
                     viewModel = viewModel,
-                    voiceManager = voiceManager,
+                    geminiViewModel = geminiViewModel,
                     onAddMore = {
                         if (ContextCompat.checkSelfPermission(
                                 context,

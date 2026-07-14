@@ -51,10 +51,13 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.pointer.pointerInput
 import android.graphics.Matrix
@@ -81,6 +84,7 @@ fun EditImageScreen(
     var saturation by remember { mutableFloatStateOf(1f) }
     var rotation by remember { mutableFloatStateOf(0f) }
     var showFilters by remember { mutableStateOf(false) }
+    var selectedBgColor by remember { mutableIntStateOf(android.graphics.Color.WHITE) }
     val scope = rememberCoroutineScope()
     
     val isEnhancing = geminiViewModel.isEnhancing
@@ -223,6 +227,69 @@ fun EditImageScreen(
                     Icon(Icons.Default.Refresh, contentDescription = "Reset")
                 }
 
+                // Magic Features Group
+                Row(
+                    modifier = Modifier
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), MaterialTheme.shapes.medium)
+                        .padding(horizontal = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // On-device Magic HD Auto-Fix (Free & Unlimited)
+                    IconButton(
+                        onClick = {
+                            scope.launch {
+                                val resultUri = geminiViewModel.autoEnhanceOnDevice(context, uri)
+                                if (resultUri != null) {
+                                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                                        try {
+                                            val inputStream = context.contentResolver.openInputStream(resultUri)
+                                            bitmap = BitmapFactory.decodeStream(inputStream)
+                                        } catch (e: Exception) { e.printStackTrace() }
+                                    }
+                                }
+                            }
+                        },
+                        enabled = !geminiViewModel.isProcessingDevice
+                    ) {
+                        Icon(
+                            Icons.Default.AutoFixNormal,
+                            contentDescription = "Magic HD Fix",
+                            tint = MaterialTheme.colorScheme.secondary
+                        )
+                    }
+
+                    // On-device Background Removal (Free & Unlimited)
+                    IconButton(
+                        onClick = {
+                            scope.launch {
+                                val resultUri = geminiViewModel.removeBackgroundOnDevice(context, uri, selectedBgColor)
+                                if (resultUri != null) {
+                                    // Reload bitmap
+                                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                                        try {
+                                            val inputStream = context.contentResolver.openInputStream(resultUri)
+                                            bitmap = BitmapFactory.decodeStream(inputStream)
+                                        } catch (e: Exception) { e.printStackTrace() }
+                                    }
+                                }
+                            }
+                        },
+                        enabled = !geminiViewModel.isProcessingDevice
+                    ) {
+                        if (geminiViewModel.isProcessingDevice) {
+                            CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+                        } else {
+                            Icon(
+                                Icons.Default.Portrait,
+                                contentDescription = "Remove BG",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.width(8.dp))
+
                 IconButton(
                     onClick = {
                         scope.launch {
@@ -236,8 +303,8 @@ fun EditImageScreen(
                     } else {
                         Icon(
                             Icons.Default.AutoFixHigh,
-                            contentDescription = "AI Enhance",
-                            tint = if (geminiViewModel.apiKey.isNotBlank()) MaterialTheme.colorScheme.primary else Color.Gray
+                            contentDescription = "AI Enhance (Gemini)",
+                            tint = if (geminiViewModel.apiKey.isNotBlank()) MaterialTheme.colorScheme.tertiary else Color.Gray
                         )
                     }
                 }
@@ -252,8 +319,48 @@ fun EditImageScreen(
                 )
             }
 
+            Spacer(modifier = Modifier.height(4.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("BG Color:", style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(end = 8.dp))
+                val bgColors = listOf(
+                    android.graphics.Color.WHITE,
+                    android.graphics.Color.parseColor("#ADD8E6"), // Light Blue
+                    android.graphics.Color.parseColor("#4169E1"), // Royal Blue
+                    android.graphics.Color.parseColor("#000080"), // Navy
+                    android.graphics.Color.parseColor("#FF0000"), // Red
+                    android.graphics.Color.parseColor("#008000"), // Green
+                    android.graphics.Color.parseColor("#FFFF00"), // Yellow
+                    android.graphics.Color.parseColor("#FFA500"), // Orange
+                    android.graphics.Color.parseColor("#800080"), // Purple
+                    android.graphics.Color.parseColor("#FFC0CB"), // Pink
+                    android.graphics.Color.parseColor("#000000"), // Black
+                    android.graphics.Color.LTGRAY
+                )
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    contentPadding = PaddingValues(horizontal = 4.dp)
+                ) {
+                    items(bgColors) { colorInt ->
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .background(androidx.compose.ui.graphics.Color(colorInt), CircleShape)
+                                .border(
+                                    width = if (selectedBgColor == colorInt) 2.dp else 1.dp,
+                                    color = if (selectedBgColor == colorInt) MaterialTheme.colorScheme.primary else androidx.compose.ui.graphics.Color.Gray.copy(alpha = 0.5f),
+                                    shape = CircleShape
+                                )
+                                .clickable { selectedBgColor = colorInt }
+                        )
+                    }
+                }
+            }
+
             if (showFilters) {
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(8.dp))
                 Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Text("Bright", style = MaterialTheme.typography.labelSmall, modifier = Modifier.width(50.dp))
                     Slider(value = brightness, onValueChange = { brightness = it }, valueRange = 0.5f..1.5f, modifier = Modifier.weight(1f))
@@ -959,7 +1066,7 @@ fun CameraScreen(
 fun PreviewScreen(
     photoUris: List<Pair<Uri, Boolean>>,
     viewModel: PassportViewModel,
-    voiceManager: VoiceManager,
+    geminiViewModel: GeminiViewModel,
     onAddMore: () -> Unit,
     onAddFromGallery: () -> Unit,
     onUploadSuccess: () -> Unit,
@@ -969,178 +1076,188 @@ fun PreviewScreen(
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
 
-    LaunchedEffect(uiState) {
-        when (uiState) {
-            is PassportViewModel.UiState.Success -> {
-                voiceManager.speakStatus("finished")
-                onUploadSuccess()
-            }
-            is PassportViewModel.UiState.Loading -> {
-                voiceManager.speakStatus("starting")
-            }
-            is PassportViewModel.UiState.Error -> {
-                voiceManager.speakStatus("error")
-            }
-            else -> {}
-        }
+    val price = when (selectedLayout) {
+        "4" -> "25"
+        "8" -> "50"
+        "2x4" -> "50"
+        else -> "50"
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Surface(
-            modifier = Modifier.weight(1f),
-            shape = RoundedCornerShape(24.dp),
-            tonalElevation = 8.dp,
-            shadowElevation = 4.dp
-        ) {
-            if (photoUris.size > 1) {
-                Row(modifier = Modifier.fillMaxSize()) {
-                    photoUris.take(2).forEach { (uri, _) ->
-                        AsyncImage(
-                            model = uri,
-                            contentDescription = "Selected Photo",
-                            modifier = Modifier.weight(1f).fillMaxHeight(),
-                            contentScale = ContentScale.Fit
-                        )
-                    }
-                }
-            } else {
-                AsyncImage(
-                    model = photoUris.firstOrNull()?.first,
-                    contentDescription = "Selected Photo",
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Fit
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        Text("Select Print Layout", fontWeight = FontWeight.Bold, fontSize = 18.sp)
-        Text("Standard size 3.5x4.5cm", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        
-        Row(
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                .fillMaxSize()
+                .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            LayoutOption(
-                label = "4 Pcs",
-                icon = Icons.Default.Grid4x4,
-                isSelected = selectedLayout == "4",
-                onClick = { selectedLayout = "4" },
-                modifier = Modifier.weight(1f)
-            )
-            LayoutOption(
-                label = "8 Pcs",
-                icon = Icons.Default.GridView,
-                isSelected = selectedLayout == "8",
-                onClick = { selectedLayout = "8" },
-                modifier = Modifier.weight(1f)
-            )
-            LayoutOption(
-                label = "Mix",
-                icon = Icons.Default.LibraryAdd,
-                isSelected = selectedLayout == "2x4",
-                onClick = { 
-                    selectedLayout = "2x4"
-                },
-                modifier = Modifier.weight(1f)
-            )
-            LayoutOption(
-                label = "Full",
-                icon = Icons.Default.FilterFrames,
-                isSelected = selectedLayout == "Single",
-                onClick = { selectedLayout = "Single" },
-                modifier = Modifier.weight(1f)
-            )
-        }
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        if (selectedLayout == "2x4" && photoUris.size < 2) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                OutlinedButton(
-                    onClick = onAddMore,
-                    modifier = Modifier.weight(1f).height(56.dp),
-                    shape = RoundedCornerShape(16.dp)
-                ) {
-                    Icon(Icons.Default.CameraAlt, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("Capture 2nd", fontSize = 12.sp)
-                }
-                
-                OutlinedButton(
-                    onClick = onAddFromGallery,
-                    modifier = Modifier.weight(1f).height(56.dp),
-                    shape = RoundedCornerShape(16.dp)
-                ) {
-                    Icon(Icons.Default.PhotoLibrary, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("Upload 2nd", fontSize = 12.sp)
-                }
-            }
-            Spacer(modifier = Modifier.height(16.dp))
-        }
-
-        if (uiState is PassportViewModel.UiState.Loading) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                LinearProgressIndicator(modifier = Modifier.fillMaxWidth().height(8.dp).clip(CircleShape))
-                Spacer(modifier = Modifier.height(12.dp))
-                Text("Sending to Print...", fontWeight = FontWeight.Medium)
-            }
-        } else {
-            val canPrint = if (selectedLayout == "2x4") photoUris.size >= 2 else photoUris.isNotEmpty()
-            
-            Button(
-                onClick = { 
-                    // Use isCamera=true if all photos are from camera
-                    val isAnyFromCamera = photoUris.any { it.second }
-                    viewModel.uploadPhoto(
-                        context = context, 
-                        uris = photoUris.map { it.first }, 
-                        layout = selectedLayout,
-                        isCamera = isAnyFromCamera
-                    ) 
-                },
-                enabled = canPrint,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(64.dp),
-                shape = RoundedCornerShape(16.dp),
-                elevation = ButtonDefaults.buttonElevation(defaultElevation = 8.dp)
-            ) {
-                Icon(Icons.Default.Send, contentDescription = null)
-                Spacer(modifier = Modifier.width(12.dp))
-                Text("Send to Print", fontSize = 18.sp, fontWeight = FontWeight.Bold)
-            }
-        }
-
-        if (uiState is PassportViewModel.UiState.Error) {
             Surface(
-                modifier = Modifier.padding(top = 16.dp),
-                color = MaterialTheme.colorScheme.errorContainer,
-                shape = RoundedCornerShape(8.dp)
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(24.dp),
+                tonalElevation = 8.dp,
+                shadowElevation = 4.dp
+            ) {
+                if (photoUris.size > 1) {
+                    Row(modifier = Modifier.fillMaxSize()) {
+                        photoUris.take(2).forEach { (uri, _) ->
+                            AsyncImage(
+                                model = uri,
+                                contentDescription = "Selected Photo",
+                                modifier = Modifier.weight(1f).fillMaxHeight(),
+                                contentScale = ContentScale.Fit
+                            )
+                        }
+                    }
+                } else {
+                    AsyncImage(
+                        model = photoUris.firstOrNull()?.first,
+                        contentDescription = "Selected Photo",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Fit
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Surface(
+                color = MaterialTheme.colorScheme.secondaryContainer,
+                shape = RoundedCornerShape(12.dp)
             ) {
                 Text(
-                    text = (uiState as PassportViewModel.UiState.Error).message,
-                    color = MaterialTheme.colorScheme.onErrorContainer,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                    style = MaterialTheme.typography.labelSmall
+                    text = "Price: ₹$price",
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer
                 )
             }
-        }
 
-        TextButton(onClick = onBack, modifier = Modifier.padding(top = 8.dp)) {
-            Text("Go Back", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Text("Select Print Layout", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+            Text("Standard size 3.5x4.5cm", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                LayoutOption(
+                    label = "4 Pcs",
+                    icon = Icons.Default.Grid4x4,
+                    isSelected = selectedLayout == "4",
+                    onClick = { selectedLayout = "4" },
+                    modifier = Modifier.weight(1f)
+                )
+                LayoutOption(
+                    label = "8 Pcs",
+                    icon = Icons.Default.GridView,
+                    isSelected = selectedLayout == "8",
+                    onClick = { selectedLayout = "8" },
+                    modifier = Modifier.weight(1f)
+                )
+                LayoutOption(
+                    label = "Mix",
+                    icon = Icons.Default.LibraryAdd,
+                    isSelected = selectedLayout == "2x4",
+                    onClick = { 
+                        selectedLayout = "2x4"
+                    },
+                    modifier = Modifier.weight(1f)
+                )
+                LayoutOption(
+                    label = "Full",
+                    icon = Icons.Default.FilterFrames,
+                    isSelected = selectedLayout == "Single",
+                    onClick = { selectedLayout = "Single" },
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            if (selectedLayout == "2x4" && photoUris.size < 2) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = onAddMore,
+                        modifier = Modifier.weight(1f).height(56.dp),
+                        shape = RoundedCornerShape(16.dp)
+                    ) {
+                        Icon(Icons.Default.CameraAlt, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Capture 2nd", fontSize = 12.sp)
+                    }
+                    
+                    OutlinedButton(
+                        onClick = onAddFromGallery,
+                        modifier = Modifier.weight(1f).height(56.dp),
+                        shape = RoundedCornerShape(16.dp)
+                    ) {
+                        Icon(Icons.Default.PhotoLibrary, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Upload 2nd", fontSize = 12.sp)
+                    }
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+
+            val canPrint = if (selectedLayout == "2x4") photoUris.size >= 2 else photoUris.isNotEmpty()
+            
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                // Cloud Print/Upload Button
+                if (uiState is PassportViewModel.UiState.Loading) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+                        LinearProgressIndicator(modifier = Modifier.fillMaxWidth().height(8.dp).clip(CircleShape))
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text("Sending to Merchant Portal...", fontWeight = FontWeight.Medium)
+                    }
+                } else {
+                    Button(
+                        onClick = { 
+                            val isAnyFromCamera = photoUris.any { it.second }
+                            viewModel.uploadPhoto(
+                                context = context, 
+                                uris = photoUris.map { it.first }, 
+                                layout = selectedLayout,
+                                isCamera = isAnyFromCamera
+                            ) 
+                        },
+                        enabled = canPrint,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(64.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        elevation = ButtonDefaults.buttonElevation(defaultElevation = 8.dp)
+                    ) {
+                        Icon(Icons.Default.CloudUpload, contentDescription = null)
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text("Send to Merchant Portal", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+
+            if (uiState is PassportViewModel.UiState.Error) {
+                Surface(
+                    modifier = Modifier.padding(top = 16.dp),
+                    color = MaterialTheme.colorScheme.errorContainer,
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text(
+                        text = (uiState as PassportViewModel.UiState.Error).message,
+                        color = MaterialTheme.colorScheme.onErrorContainer,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                        style = MaterialTheme.typography.labelSmall
+                    )
+                }
+            }
+
+            TextButton(onClick = onBack, modifier = Modifier.padding(top = 8.dp)) {
+                Text("Go Back", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
         }
     }
 }
