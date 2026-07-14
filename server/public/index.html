@@ -402,17 +402,22 @@
             if (processingInterval) return;
             const audioContext = new (window.AudioContext || window.webkitAudioContext)();
             processingInterval = setInterval(() => {
-                const osc = audioContext.createOscillator();
-                const gain = audioContext.createGain();
-                osc.type = 'triangle';
-                osc.connect(gain);
-                gain.connect(audioContext.destination);
-                osc.frequency.setValueAtTime(440, audioContext.currentTime);
-                gain.gain.setValueAtTime(0.05, audioContext.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
-                osc.start();
-                osc.stop(audioContext.currentTime + 0.5);
-            }, 800);
+                const now = audioContext.currentTime;
+                const playNote = (freq, start, duration) => {
+                    const osc = audioContext.createOscillator();
+                    const gain = audioContext.createGain();
+                    osc.type = 'sine';
+                    osc.connect(gain);
+                    gain.connect(audioContext.destination);
+                    osc.frequency.setValueAtTime(freq, start);
+                    gain.gain.setValueAtTime(0.05, start);
+                    gain.gain.exponentialRampToValueAtTime(0.01, start + duration);
+                    osc.start(start);
+                    osc.stop(start + duration);
+                };
+                playNote(523.25, now, 0.4); // C5
+                playNote(659.25, now + 0.2, 0.4); // E5
+            }, 1000);
         }
 
         function stopProcessingTone() {
@@ -461,11 +466,6 @@
             }
             updatePreview(job, true);
             refreshHistory();
-            
-            // Auto-trigger browser print if enabled or just show dialog
-            setTimeout(() => {
-                window.print();
-            }, 2000);
         });
 
         manualUpload.onchange = async () => {
@@ -525,20 +525,19 @@
             
             let message = "";
             if (text === "starting") {
-                message = "Print ho raha hai. Kripya intezaar karein.";
+                message = "प्रिंट हो रहा है। कृपया इंतज़ार करें।";
             } else if (text === "finished") {
-                let priceText = "pachas rupaye";
-                if (layout === "4") priceText = "pachis rupaye";
+                let priceText = "पचास रुपये";
+                if (layout === "4") priceText = "पच्चीस रुपये";
                 
-                message = `Print ho gaya hai. Iska daam ${priceText} hai. Counter par do aur apni photo lo.`;
+                message = `प्रिंट हो गया है। इसका दाम ${priceText} है। काउंटर पर दो और अपनी फोटो लो।`;
             } else {
                 message = text;
             }
 
             const utterance = new SpeechSynthesisUtterance(message);
-            if (voiceLanguage === 'Hindi' || text === "starting" || text === "finished") utterance.lang = 'hi-IN';
-            else if (voiceLanguage === 'Marathi') utterance.lang = 'mr-IN';
-            else utterance.lang = 'en-US';
+            utterance.lang = 'hi-IN';
+            utterance.rate = 0.9;
             window.speechSynthesis.speak(utterance);
         }
 
@@ -576,13 +575,7 @@
             
             if (autoPrint) {
                 img.onload = () => {
-                    console.log("Preparing to print via Iframe...");
-                    // Auto-select orientation
-                    let orientation = (job.layout === "8" || job.layout === "2x4") ? "landscape" : "portrait";
-                    if (job.layout === "Single") {
-                        orientation = (img.naturalWidth > img.naturalHeight) ? "landscape" : "portrait";
-                    }
-                    printViaIframe(freshUrl, orientation);
+                    console.log("Job completed. Local agent will handle silent printing.");
                 };
             }
             

@@ -109,7 +109,30 @@ def main():
                 print(f"🖨️  Sending to default printer...")
                 
                 if os.name == 'nt': # Windows
-                    os.startfile(file_path, "print")
+                    print(f"🖨️  Sending to default printer (Direct Automated)...")
+                    # Using PowerShell with System.Drawing to print silently without dialogs
+                    ps_script = f"""
+                    Add-Type -AssemblyName System.Drawing
+                    $path = '{file_path}'
+                    $printer = (Get-WmiObject -Query "Select * from Win32_Printer Where Default = True").Name
+                    $doc = New-Object System.Drawing.Printing.PrintDocument
+                    $doc.PrinterSettings.PrinterName = $printer
+                    $doc.add_PrintPage({{
+                        $img = [System.Drawing.Image]::FromFile($path)
+                        $area = $eventArgs.MarginBounds
+                        if ($img.Width / $img.Height -gt $area.Width / $area.Height) {{
+                            $width = $area.Width
+                            $height = $img.Height * $area.Width / $img.Width
+                        }} else {{
+                            $height = $area.Height
+                            $width = $img.Width * $area.Height / $img.Height
+                        }}
+                        $eventArgs.Graphics.DrawImage($img, $area.X, $area.Y, $width, $height)
+                        $img.Dispose()
+                    }})
+                    $doc.Print()
+                    """
+                    subprocess.run(["powershell", "-Command", ps_script], capture_output=True)
                 else: # Linux/Mac
                     subprocess.run(["lp", file_path])
             else:
