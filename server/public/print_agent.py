@@ -111,23 +111,21 @@ def main():
                 
                 if os.name == 'nt': # Windows
                     print(f"🖨️  Starting PowerShell print (Direct)...")
-                    # Escaping backslashes for PowerShell string
-                    escaped_path = abs_path.replace('\\', '\\\\')
+                    # Use forward slashes for path to avoid PowerShell escaping issues
+                    escaped_path = abs_path.replace('\\', '/')
                     ps_script = f"""
                     Add-Type -AssemblyName System.Drawing
-                    $path = "{escaped_path}"
                     $doc = New-Object System.Drawing.Printing.PrintDocument
                     $doc.DocumentName = "Passport Photo Print"
                     $doc.add_PrintPage({{
+                        param($sender, $e)
                         try {{
-                            $img = [System.Drawing.Image]::FromFile($path)
-                            $graphics = $eventArgs.Graphics
-                            # Fill the page margin area
-                            $rect = $eventArgs.MarginBounds
-                            $graphics.DrawImage($img, $rect)
+                            $img = [System.Drawing.Image]::FromFile("{escaped_path}")
+                            # Draw image to fill the printable area (MarginBounds)
+                            $e.Graphics.DrawImage($img, $e.MarginBounds)
                             $img.Dispose()
                         }} catch {{
-                            Write-Error "Error drawing image: $_"
+                            Write-Error "Error in PrintPage: $_"
                         }}
                     }})
                     $doc.Print()

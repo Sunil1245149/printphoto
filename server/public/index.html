@@ -467,13 +467,15 @@
             const elapsed = now - jobStartTime;
             const minDuration = 60000; // 60 seconds
             
+            // Show preview immediately
+            updatePreview(job, true);
+            refreshHistory();
+
             const finalizeJob = () => {
                 stopProcessingTone();
                 if (voiceEnabled) {
                     speak("finished", job.layout);
                 }
-                updatePreview(job, true);
-                refreshHistory();
             };
 
             if (jobStartTime > 0 && elapsed < minDuration) {
