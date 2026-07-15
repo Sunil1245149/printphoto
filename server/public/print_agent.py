@@ -99,13 +99,14 @@ def main():
     @sio.on('print_job')
     def on_print_job(data):
         url = data.get('url')
+        job_id = data.get('jobId', 'Unknown')
         if not url: return
         
         # Build absolute URL correctly
         conn_url = sio.connection_url.rstrip('/')
         image_url = url if url.startswith('http') else f"{conn_url}{url}"
         
-        print(f"\n[NEW JOB] Received: {image_url}")
+        print(f"\n[NEW JOB] Received: {image_url} (Job ID: {job_id})")
         
         file_path = os.path.join(DOWNLOAD_DIR, f"print_{int(time.time())}.png")
         

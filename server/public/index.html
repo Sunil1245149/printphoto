@@ -577,18 +577,31 @@
                 message = text;
             }
 
+            // Cancel any ongoing speech
+            window.speechSynthesis.cancel();
+
             const utterance = new SpeechSynthesisUtterance(message);
             
-            // Set correct language code
-            if (lang === 'Marathi') {
-                utterance.lang = 'mr-IN';
-            } else if (lang === 'Hindi') {
-                utterance.lang = 'hi-IN';
-            } else {
-                utterance.lang = 'en-US';
+            // Set correct language code and find best matching voice
+            let langCode = 'en-US';
+            if (lang === 'Marathi') langCode = 'mr-IN';
+            else if (lang === 'Hindi') langCode = 'hi-IN';
+            
+            utterance.lang = langCode;
+            
+            // Try to find a voice that matches the language code
+            const voices = window.speechSynthesis.getVoices();
+            const voice = voices.find(v => v.lang.includes(langCode) || v.lang.includes(langCode.split('-')[0]));
+            if (voice) {
+                utterance.voice = voice;
             }
             
             utterance.rate = 0.95;
+            utterance.pitch = 1.0;
+            
+            // Error handling
+            utterance.onerror = (e) => console.error("SpeechSynthesis error:", e);
+            
             window.speechSynthesis.speak(utterance);
         }
 
