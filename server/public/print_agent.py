@@ -28,6 +28,20 @@ def install_dependencies():
             print(f"❌ Auto-installation failed: {e}")
             return False
 
+def print_banner():
+    try:
+        os.system('cls' if os.name == 'nt' else 'clear')
+    except:
+        pass
+    print("="*65)
+    print("🖨️  EASY-PRINT LOCAL PRINT AGENT (ऑटो-प्रिंट एजेंट)")
+    print("="*65)
+    print("हिन्दी निर्देश: यह प्रोग्राम आपके कंप्यूटर को प्रिंटर से जोड़ता है।")
+    print("अगर आप AI Studio का URL डाल रहे हैं और 404 आ रहा है, ")
+    print("तो इसका मतलब है कि सर्वर वहां नहीं चल रहा।")
+    print("अपना Render.com वाला URL इस्तेमाल करें।")
+    print("="*65)
+
 def main():
     if not install_dependencies():
         print("\nManually run: pip install \"python-socketio[client]\" requests")
@@ -71,20 +85,6 @@ def main():
         engineio_logger=False
     )
 
-    def print_banner():
-        try:
-            os.system('cls' if os.name == 'nt' else 'clear')
-        except:
-            pass
-        print("="*65)
-        print("🖨️  EASY-PRINT LOCAL PRINT AGENT (ऑटो-प्रिंट एजेंट)")
-        print("="*65)
-        print("हिन्दी निर्देश: यह प्रोग्राम आपके कंप्यूटर को प्रिंटर से जोड़ता है।")
-        print("अगर आप AI Studio का URL डाल रहे हैं और 404 आ रहा है, ")
-        print("तो इसका मतलब है कि सर्वर वहां नहीं चल रहा।")
-        print("अपना Render.com वाला URL इस्तेमाल करें।")
-        print("="*65)
-
     @sio.event
     def connect():
         print(f"\n✅ Connected to Server: {sio.connection_url}")
@@ -99,6 +99,7 @@ def main():
     @sio.on('print_job')
     def on_print_job(data):
         url = data.get('url')
+        job_id = data.get('jobId')
         if not url: return
         
         # Build absolute URL correctly

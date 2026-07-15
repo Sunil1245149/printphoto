@@ -90,10 +90,9 @@ const uploadHandler = [
             const sheetWidth = 1800; // 6 inch at 300 DPI
             const sheetHeight = 1200; // 4 inch at 300 DPI
             
-            // Base sizes for all copies (Standard India Passport size: 3.5cm x 4.5cm)
-            // At 300 DPI: 3.5 / 2.54 * 300 = 413, 4.5 / 2.54 * 300 = 531
-            const pWidth = 413; 
-            const pHeight = 531; 
+            // Base sizes for all copies (Slightly reduced for margin safety)
+            const pWidth = 390; 
+            const pHeight = 505; 
             
             const borderSize = 1;
             const gapSize = 30; 
@@ -238,23 +237,29 @@ const uploadHandler = [
         } else if (layout === "2x4") {
             const photo1 = processedPhotos[0];
             const photo2 = processedPhotos[1] || processedPhotos[0];
-            const fullW = pWidth + (borderSize + gapSize) * 2;
-            const fullH = pHeight + (borderSize + gapSize) * 2;
+            const fullW = pWidth + borderSize * 2;
+            const fullH = pHeight + borderSize * 2;
             
             // On 1800x1200 (6x4 Landscape)
-            const interGapX = 0; 
-            const interGapY = 0; 
-            const totalW = (fullW * 4);
-            const totalH = (fullH * 2);
+            const totalW = (fullW * 4) + (gapSize * 3);
+            const totalH = (fullH * 2) + gapSize;
 
             const marginX = Math.floor((sheetWidth - totalW) / 2);
             const marginY = Math.floor((sheetHeight - totalH) / 2);
 
             for (let i = 0; i < 4; i++) {
-                compositeArr.push({ input: photo1, top: marginY, left: marginX + i * fullW });
+                compositeArr.push({ 
+                    input: photo1, 
+                    top: marginY, 
+                    left: marginX + i * (fullW + gapSize) 
+                });
             }
             for (let i = 0; i < 4; i++) {
-                compositeArr.push({ input: photo2, top: marginY + fullH, left: marginX + i * fullW });
+                compositeArr.push({ 
+                    input: photo2, 
+                    top: marginY + fullH + gapSize, 
+                    left: marginX + i * (fullW + gapSize) 
+                });
             }
 
             finalOutput = sharp({
