@@ -28,6 +28,20 @@ def install_dependencies():
             print(f"❌ Auto-installation failed: {e}")
             return False
 
+def print_banner():
+    try:
+        os.system('cls' if os.name == 'nt' else 'clear')
+    except:
+        pass
+    print("="*65)
+    print("🖨️  EASY-PRINT LOCAL PRINT AGENT (ऑटो-प्रिंट एजेंट)")
+    print("="*65)
+    print("हिन्दी निर्देश: यह प्रोग्राम आपके कंप्यूटर को प्रिंटर से जोड़ता है।")
+    print("अगर आप AI Studio का URL डाल रहे हैं और 404 आ रहा है, ")
+    print("तो इसका मतलब है कि सर्वर वहां नहीं चल रहा।")
+    print("अपना Render.com वाला URL इस्तेमाल करें।")
+    print("="*65)
+
 def main():
     if not install_dependencies():
         print("\nManually run: pip install \"python-socketio[client]\" requests")
@@ -43,9 +57,9 @@ def main():
     DEFAULT_URL = "https://printphoto.onrender.com"
     
     print_banner()
-    print(f"Suggested URL: {DEFAULT_URL}")
-    server_url = input(f"Enter Portal URL (Press Enter to use suggested): ").strip() or DEFAULT_URL
+    server_url_input = input(f"Enter Portal URL (Suggested: {DEFAULT_URL}): ").strip() or DEFAULT_URL
     
+    server_url = server_url_input
     if not server_url.startswith('http'):
         if 'localhost' in server_url or '127.0.0.1' in server_url:
             server_url = 'http://' + server_url
@@ -63,53 +77,15 @@ def main():
     except Exception:
         DOWNLOAD_DIR = script_dir
 
-    sio = socketio.Client(
-        reconnection=True, 
-        reconnection_attempts=0, # Infinite retries
-        reconnection_delay=5,
-        logger=False, 
-        engineio_logger=False
-    )
-
-    def print_banner():
-        try:
-            os.system('cls' if os.name == 'nt' else 'clear')
-        except:
-            pass
-        print("="*65)
-        print("🖨️  EASY-PRINT LOCAL PRINT AGENT (ऑटो-प्रिंट एजेंट)")
-        print("="*65)
-        print("हिन्दी निर्देश: यह प्रोग्राम आपके कंप्यूटर को प्रिंटर से जोड़ता है।")
-        print("अगर आप AI Studio का URL डाल रहे हैं और 404 आ रहा है, ")
-        print("तो इसका मतलब है कि सर्वर वहां नहीं चल रहा।")
-        print("अपना Render.com वाला URL इस्तेमाल करें।")
-        print("="*65)
-
-    @sio.event
-    def connect():
-        print(f"\n✅ Connected to Server: {sio.connection_url}")
-        print("📡 Waiting for jobs... (प्रिंट जॉब्स की प्रतीक्षा कर रहा है...)")
-        print("Press Ctrl+C to stop.")
-        print("-" * 40)
-
-    @sio.event
-    def disconnect():
-        print("\n❌ Connection lost. Retrying in 5 seconds...")
-
-    @sio.on('print_job')
-    def on_print_job(data):
+    def on_print_job_handler(data):
         url = data.get('url')
         job_id = data.get('jobId', 'Unknown')
         if not url: return
         
-        # Build absolute URL correctly
-        conn_url = sio.connection_url.rstrip('/')
-        image_url = url if url.startswith('http') else f"{conn_url}{url}"
-        
+        image_url = url if url.startswith('http') else f"{server_url}{url}"
         print(f"\n[NEW JOB] Received: {image_url} (Job ID: {job_id})")
         
         file_path = os.path.join(DOWNLOAD_DIR, f"print_{int(time.time())}.png")
-        
         try:
             print("⏳ Downloading image...")
             response = requests.get(image_url, timeout=30)
@@ -123,68 +99,60 @@ def main():
                 
                 if os.name == 'nt': # Windows
                     print(f"🖨️  Starting PowerShell print (Direct)...")
-                    # Use forward slashes for path to avoid PowerShell escaping issues
                     escaped_path = abs_path.replace('\\', '/')
                     ps_script = f"""
                     Add-Type -AssemblyName System.Drawing
                     $doc = New-Object System.Drawing.Printing.PrintDocument
                     $doc.DocumentName = "Passport Photo Print"
                     $img = [System.Drawing.Image]::FromFile("{escaped_path}")
-                    
-                    # Auto Orientation: Width > Height means 8 photos (Landscape), else 4 photos (Portrait)
-                    if ($img.Width -gt $img.Height) {{
-                        $doc.DefaultPageSettings.Landscape = $true
-                    }} else {{
-                        $doc.DefaultPageSettings.Landscape = $false
-                    }}
-                    
-                    # Ensure Color mode is enabled
+                    if ($img.Width -gt $img.Height) {{ $doc.DefaultPageSettings.Landscape = $true }} else {{ $doc.DefaultPageSettings.Landscape = $false }}
                     $doc.DefaultPageSettings.Color = $true
-                    
-                    # Set margins to 0 for full 4x6 printing
                     $doc.DefaultPageSettings.Margins = New-Object System.Drawing.Printing.Margins(0,0,0,0)
                     $doc.OriginAtMargins = $false
-                    
                     $doc.add_PrintPage({{
                         param($sender, $e)
                         try {{
                             $graphics = $e.Graphics
-                            # Use full page area to avoid stretching and respect orientation
                             $rect = $e.PageBounds
-                            
-                            # Draw image to fill the paper exactly (4x6 area)
                             $graphics.DrawImage($img, 0, 0, $rect.Width, $rect.Height)
                             $e.HasMorePages = $false
-                        }} catch {{
-                            Write-Error "Error in PrintPage: $_"
-                        }}
+                        }} catch {{ Write-Error "Error in PrintPage: $_" }}
                     }})
                     $doc.Print()
                     $img.Dispose()
                     """
                     result = subprocess.run(["powershell", "-Command", ps_script], capture_output=True, text=True)
-                    if result.stderr:
-                        print(f"❌ PowerShell Error: {result.stderr}")
+                    if result.stderr: print(f"❌ PowerShell Error: {result.stderr}")
                     else:
                         print(f"✅ Print command sent successfully.")
-                        # Notify server
-                        try:
-                            requests.post(f"{server_url}/api/print-success", json={"jobId": job_id})
-                        except Exception as e:
-                            print(f"⚠️  Could not notify server: {e}")
+                        try: requests.post(f"{server_url}/api/print-success", json={"jobId": job_id})
+                        except: pass
                 else: # Linux/Mac
                     subprocess.run(["lp", file_path])
-                    try:
-                        requests.post(f"{server_url}/api/print-success", json={"jobId": job_id})
-                    except Exception as e:
-                        print(f"⚠️  Could not notify server: {e}")
+                    try: requests.post(f"{server_url}/api/print-success", json={"jobId": job_id})
+                    except: pass
             else:
                 print(f"❌ Download failed: HTTP {response.status_code}")
         except Exception as e:
             print(f"❌ Printing Error: {e}")
 
-    print_banner()
-    
+    sio = socketio.Client(
+        reconnection=True, 
+        reconnection_attempts=0, 
+        reconnection_delay=5
+    )
+
+    @sio.event
+    def connect():
+        print(f"\n✅ Connected to Server: {server_url}")
+        print("📡 Waiting for jobs...")
+
+    @sio.event
+    def disconnect():
+        print("\n❌ Connection lost. Retrying...")
+
+    sio.on('print_job', on_print_job_handler)
+
     try:
         print(f"\nChecking server: {server_url} ...")
         # Try a quick ping

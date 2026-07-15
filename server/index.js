@@ -35,7 +35,7 @@ fs.ensureDirSync('history');
 
 const settingsFile = 'settings.json';
 if (!fs.existsSync(settingsFile)) {
-    fs.writeJsonSync(settingsFile, { voiceEnabled: true });
+    fs.writeJsonSync(settingsFile, { voiceEnabled: true, voiceLanguage: 'Hindi' });
 }
 
 let printQueue = [];
