@@ -405,6 +405,11 @@
             jobStartTime = Date.now();
             const audioContext = new (window.AudioContext || window.webkitAudioContext)();
             processingInterval = setInterval(() => {
+                // Auto-stop after 30 seconds as requested
+                if (Date.now() - jobStartTime > 30000) {
+                    stopProcessingTone();
+                    return;
+                }
                 const now = audioContext.currentTime;
                 const playNote = (freq, start, duration) => {
                     const osc = audioContext.createOscillator();
@@ -457,8 +462,13 @@
         socket.on('job-received', (job) => {
             if (voiceEnabled) {
                 playTingDing();
-                speak("starting");
-                setTimeout(startProcessingTone, 1000);
+                const utterance = speak("starting");
+                // Tone starts after the speech finishes (approx 3-4 seconds later)
+                if (utterance) {
+                    utterance.onend = () => startProcessingTone();
+                } else {
+                    setTimeout(startProcessingTone, 4000);
+                }
             }
         });
 
@@ -534,7 +544,7 @@
         }
 
         function speak(text, layout = "8") {
-            if (!voiceEnabled) return;
+            if (!voiceEnabled) return null;
             
             let message = "";
             const lang = voiceLanguage;
@@ -560,10 +570,16 @@
                 let hindiPrice = "पचास रुपये";
                 let englishPrice = "fifty rupees";
                 
+                // Price logic as requested: 4 photo -> 25, 8 or Full -> 50
                 if (layout === "4") {
                     priceText = "पंचवीस रुपये";
                     hindiPrice = "पच्चीस रुपये";
                     englishPrice = "twenty-five rupees";
+                } else {
+                    // 8 or Single/Full/2x4 all default to 50
+                    priceText = "पन्नास रुपये";
+                    hindiPrice = "पचास रुपये";
+                    englishPrice = "fifty rupees";
                 }
                 
                 if (lang === 'Marathi') {
@@ -603,6 +619,7 @@
             utterance.onerror = (e) => console.error("SpeechSynthesis error:", e);
             
             window.speechSynthesis.speak(utterance);
+            return utterance;
         }
 
         function createJobElement(job) {
