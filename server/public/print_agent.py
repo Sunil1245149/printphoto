@@ -131,6 +131,9 @@ def main():
                     $doc.DocumentName = "Passport Photo Print"
                     $img = [System.Drawing.Image]::FromFile("{escaped_path}")
                     
+                    # Use StandardPrintController to suppress the "Printing..." status dialog
+                    $doc.PrintController = New-Object System.Drawing.Printing.StandardPrintController
+                    
                     # Auto Orientation: Width > Height means 8 photos (Landscape), else 4 photos (Portrait)
                     if ($img.Width -gt $img.Height) {{
                         $doc.DefaultPageSettings.Landscape = $true
@@ -141,7 +144,7 @@ def main():
                     # Ensure Color mode is enabled
                     $doc.DefaultPageSettings.Color = $true
                     
-                    # Set margins to 0 for full 4x6 printing
+                    # Set margins to 0 for full 4x6 printing (we handle margins in layout)
                     $doc.DefaultPageSettings.Margins = New-Object System.Drawing.Printing.Margins(0,0,0,0)
                     $doc.OriginAtMargins = $false
                     
@@ -153,9 +156,14 @@ def main():
                             $graphics.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::HighQuality
                             $graphics.PixelOffsetMode = [System.Drawing.Drawing2D.PixelOffsetMode]::HighQuality
                             
-                            # Use full page area
-                            $rect = $e.PageBounds
-                            Write-Host "Printing to area: $($rect.Width)x$($rect.Height) (Orientation: $($doc.DefaultPageSettings.Landscape))"
+                            # Use page area with a tiny safety margin (2% buffer) to avoid cutting
+                            $pBounds = $e.PageBounds
+                            $safeMarginX = $pBounds.Width * 0.02
+                            $safeMarginY = $pBounds.Height * 0.02
+                            
+                            $rect = New-Object System.Drawing.RectangleF($safeMarginX, $safeMarginY, $pBounds.Width - ($safeMarginX * 2), $pBounds.Height - ($safeMarginY * 2))
+                            
+                            Write-Host "Printing to Area: $($rect.Width)x$($rect.Height) inside $($pBounds.Width)x$($pBounds.Height)"
                             
                             # Preserve Aspect Ratio to avoid "daba hua" (squashed) look
                             $imageRatio = $img.Width / $img.Height
@@ -163,18 +171,18 @@ def main():
                             
                             $drawWidth = $rect.Width
                             $drawHeight = $rect.Height
-                            $offsetX = 0
-                            $offsetY = 0
+                            $offsetX = $rect.X
+                            $offsetY = $rect.Y
                             
-                            if ($imageRatio -gt $pageRatio) {
-                                # Image is wider than page ratio (e.g. landscape on portrait paper)
+                            if ($imageRatio -gt $pageRatio) {{
+                                # Image is wider than page ratio
                                 $drawHeight = $rect.Width / $imageRatio
-                                $offsetY = ($rect.Height - $drawHeight) / 2
-                            } else {
+                                $offsetY = $rect.Y + ($rect.Height - $drawHeight) / 2
+                            }} else {{
                                 # Image is taller than page ratio
                                 $drawWidth = $rect.Height * $imageRatio
-                                $offsetX = ($rect.Width - $drawWidth) / 2
-                            }
+                                $offsetX = $rect.X + ($rect.Width - $drawWidth) / 2
+                            }}
                             
                             # Draw image centered with high quality scaling
                             $graphics.DrawImage($img, [float]$offsetX, [float]$offsetY, [float]$drawWidth, [float]$drawHeight)

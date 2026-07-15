@@ -91,12 +91,12 @@ const uploadHandler = [
             const sheetHeight = 1200; // 4 inch at 300 DPI
             
             // Base sizes for all copies (Standard India Passport size: 3.5cm x 4.5cm)
-            // At 300 DPI: 3.5 / 2.54 * 300 = 413, 4.5 / 2.54 * 300 = 531
-            const pWidth = 413; 
-            const pHeight = 531; 
+            // Reduced further for safe printable area margins (approx 3.0cm x 3.9cm at 300 DPI)
+            const pWidth = 360; 
+            const pHeight = 460; 
             
             const borderSize = 1;
-            const gapSize = 30; 
+            const gapSize = 50; 
 
             // Helper to process a single photo
             const processPhoto = async (file) => {
@@ -218,7 +218,7 @@ const uploadHandler = [
             const sW = 1200;
             const sH = 1800;
             
-            const gSize = 80; // Larger gap for 4 copies
+            const gSize = gapSize; // Consistently large gap
             
             // 2x2 grid
             const totalW = (fullW * 2) + gSize;
@@ -264,7 +264,7 @@ const uploadHandler = [
             const sW = 1800;
             const sH = 1200;
 
-            const gSize = 30; // Consistent gap
+            const gSize = gapSize; // Consistently large gap
 
             const totalW = (fullW * 4) + (gSize * 3);
             const totalH = (fullH * 2) + gSize;
@@ -349,7 +349,7 @@ const uploadHandler = [
             const sW = 1800;
             const sH = 1200;
 
-            const gSize = 30; // Consistent gap
+            const gSize = gapSize; // Consistently large gap
 
             const totalW = (fullW * 4) + (gSize * 3);
             const totalH = (fullH * 2) + gSize;
