@@ -4,8 +4,10 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
+import android.speech.tts.TextToSpeech
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import java.util.Locale
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -24,8 +26,17 @@ import com.example.ui.theme.MyApplicationTheme
 
 class MainActivity : ComponentActivity() {
 
+    private var tts: TextToSpeech? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        tts = TextToSpeech(this) { status ->
+            if (status == TextToSpeech.SUCCESS) {
+                tts?.language = Locale("en", "US")
+            }
+        }
+
         enableEdgeToEdge()
         setContent {
             MyApplicationTheme {
@@ -33,15 +44,31 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    MainNavigation()
+                    MainNavigation(onSpeak = { text, lang -> speak(text, lang) })
                 }
             }
         }
     }
+
+    override fun onDestroy() {
+        tts?.stop()
+        tts?.shutdown()
+        super.onDestroy()
+    }
+
+    private fun speak(text: String, language: String) {
+        val locale = when (language) {
+            "Marathi" -> Locale("mr", "IN")
+            "Hindi" -> Locale("hi", "IN")
+            else -> Locale("en", "US")
+        }
+        tts?.language = locale
+        tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, null)
+    }
 }
 
 @Composable
-fun MainNavigation() {
+fun MainNavigation(onSpeak: (String, String) -> Unit) {
     val navController = rememberNavController()
     val viewModel: PassportViewModel = viewModel()
     val geminiViewModel: GeminiViewModel = viewModel()
@@ -167,7 +194,14 @@ fun MainNavigation() {
                         launcher.launch("image/*")
                     },
                     onUploadSuccess = {
-                        Toast.makeText(context, "Photos sent to print!", Toast.LENGTH_LONG).show()
+                        val msg = when (selectedLanguage) {
+                            "Marathi" -> "फोटो प्रिंटसाठी पाठवले गेले आहेत!"
+                            "Hindi" -> "फोटो प्रिंट के लिए भेज दिए गए हैं!"
+                            else -> "Photos sent to print!"
+                        }
+                        Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
+                        onSpeak(msg, selectedLanguage)
+                        
                         viewModel.resetState()
                         photoUris = emptyList()
                         navController.navigate("home") {

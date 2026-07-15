@@ -537,20 +537,58 @@
             if (!voiceEnabled) return;
             
             let message = "";
+            const lang = voiceLanguage;
+            
             if (text === "starting") {
-                message = "प्रिंटिंग सुरू झाली आहे. कृपया प्रतीक्षा करा.";
+                if (lang === 'Marathi') {
+                    message = "नवीन प्रिंट ऑर्डर आली आहे. कृपया प्रतीक्षा करा.";
+                } else if (lang === 'Hindi') {
+                    message = "नई प्रिंट ऑर्डर आई है। कृपया प्रतीक्षा करें।";
+                } else {
+                    message = "New print order received. Please wait.";
+                }
+            } else if (text === "arrived") {
+                if (lang === 'Marathi') {
+                    message = "प्रिंट तयार आहे, आता प्रिंटिंग सुरू होत आहे.";
+                } else if (lang === 'Hindi') {
+                    message = "प्रिंट तैयार है, अब प्रिंटिंग शुरू हो रही है।";
+                } else {
+                    message = "Print is ready, starting printing now.";
+                }
             } else if (text === "finished") {
                 let priceText = "पन्नास रुपये";
-                if (layout === "4") priceText = "पंचवीस रुपये";
+                let hindiPrice = "पचास रुपये";
+                let englishPrice = "fifty rupees";
                 
-                message = `तुमची प्रिंट पूर्ण झाली आहे. याची किंमत ${priceText} आहे. कृपया काउंटरवर पैसे द्या आणि तुमचे फोटो घ्या. धन्यवाद.`;
+                if (layout === "4") {
+                    priceText = "पंचवीस रुपये";
+                    hindiPrice = "पच्चीस रुपये";
+                    englishPrice = "twenty-five rupees";
+                }
+                
+                if (lang === 'Marathi') {
+                    message = `तुमची प्रिंट पूर्ण झाली आहे. याची किंमत ${priceText} आहे. कृपया काउंटरवर पैसे द्या आणि तुमचे फोटो घ्या. धन्यवाद.`;
+                } else if (lang === 'Hindi') {
+                    message = `आपकी प्रिंट पूरी हो गई है। इसकी कीमत ${hindiPrice} है। कृपया काउंटर पर पैसे दें और अपने फोटो लें। धन्यवाद।`;
+                } else {
+                    message = `Your print is complete. The price is ${englishPrice}. Please pay at the counter and collect your photos. Thank you.`;
+                }
             } else {
                 message = text;
             }
 
             const utterance = new SpeechSynthesisUtterance(message);
-            utterance.lang = 'mr-IN';
-            utterance.rate = 0.9;
+            
+            // Set correct language code
+            if (lang === 'Marathi') {
+                utterance.lang = 'mr-IN';
+            } else if (lang === 'Hindi') {
+                utterance.lang = 'hi-IN';
+            } else {
+                utterance.lang = 'en-US';
+            }
+            
+            utterance.rate = 0.95;
             window.speechSynthesis.speak(utterance);
         }
 
@@ -589,6 +627,8 @@
             if (autoPrint) {
                 img.onload = () => {
                     console.log("Job completed. Local agent will handle silent printing.");
+                    // Optional: Speak "arrived" when preview is ready
+                    speak("arrived");
                 };
             }
             
