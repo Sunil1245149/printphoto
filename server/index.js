@@ -227,29 +227,29 @@ const uploadHandler = [
             const marginX = Math.floor((sW - totalW) / 2);
             const marginY = Math.floor((sH - totalH) / 2);
 
+            // Initialize with cutting lines (drawn first/underneath)
             compositeArr = [
-                { input: photo, top: marginY, left: marginX },
-                { input: photo, top: marginY, left: marginX + fullW + gSize },
-                { input: photo, top: marginY + fullH + gSize, left: marginX },
-                { input: photo, top: marginY + fullH + gSize, left: marginX + fullW + gSize }
-            ];
-
-            // Add cutting lines (light gray dotted)
-            const cuttingLines = [
                 // Vertical guide
                 {
-                    input: Buffer.from(`<svg width="2" height="${totalH}"><line x1="0" y1="0" x2="0" y2="${totalH}" stroke="#CCCCCC" stroke-width="2" stroke-dasharray="10,10"/></svg>`),
+                    input: Buffer.from(`<svg width="2" height="${totalH}"><line x1="0" y1="0" x2="0" y2="${totalH}" stroke="#DDDDDD" stroke-width="2" stroke-dasharray="10,10"/></svg>`),
                     top: marginY,
                     left: Math.round(marginX + fullW + gSize / 2)
                 },
                 // Horizontal guide
                 {
-                    input: Buffer.from(`<svg width="${totalW}" height="2"><line x1="0" y1="0" x2="${totalW}" y2="0" stroke="#CCCCCC" stroke-width="2" stroke-dasharray="10,10"/></svg>`),
+                    input: Buffer.from(`<svg width="${totalW}" height="2"><line x1="0" y1="0" x2="${totalW}" y2="0" stroke="#DDDDDD" stroke-width="2" stroke-dasharray="10,10"/></svg>`),
                     top: Math.round(marginY + fullH + gSize / 2),
                     left: marginX
                 }
             ];
-            compositeArr.push(...cuttingLines);
+
+            // Add photos on top
+            compositeArr.push(
+                { input: photo, top: marginY, left: marginX },
+                { input: photo, top: marginY, left: marginX + fullW + gSize },
+                { input: photo, top: marginY + fullH + gSize, left: marginX },
+                { input: photo, top: marginY + fullH + gSize, left: marginX + fullW + gSize }
+            );
             
             finalOutput = sharp({
                 create: { width: sW, height: sH, channels: 4, background: { r: 255, g: 255, b: 255, alpha: 1 } }
@@ -266,12 +266,34 @@ const uploadHandler = [
 
             const gSize = gapSize; // Consistently large gap
 
+            // Initialize composite array with cutting lines FIRST (so they stay behind photos)
+            const compositeArr = [];
+
             const totalW = (fullW * 4) + (gSize * 3);
             const totalH = (fullH * 2) + gSize;
 
             const marginX = Math.floor((sW - totalW) / 2);
             const marginY = Math.floor((sH - totalH) / 2);
 
+            // Vertical dotted guides
+            for (let i = 1; i < 4; i++) {
+                const x = marginX + i * fullW + (i - 0.5) * gSize;
+                compositeArr.push({
+                    input: Buffer.from(`<svg width="2" height="${totalH}"><line x1="0" y1="0" x2="0" y2="${totalH}" stroke="#DDDDDD" stroke-width="2" stroke-dasharray="10,10"/></svg>`),
+                    top: marginY,
+                    left: Math.round(x)
+                });
+            }
+            
+            // Horizontal dotted guide
+            const midY = marginY + fullH + gSize / 2;
+            compositeArr.push({
+                input: Buffer.from(`<svg width="${totalW}" height="2"><line x1="0" y1="0" x2="${totalW}" y2="0" stroke="#DDDDDD" stroke-width="2" stroke-dasharray="10,10"/></svg>`),
+                top: Math.round(midY),
+                left: marginX
+            });
+
+            // Add photos on top
             for (let i = 0; i < 4; i++) {
                 compositeArr.push({ 
                     input: photo1, 
@@ -286,25 +308,6 @@ const uploadHandler = [
                     left: marginX + i * (fullW + gSize) 
                 });
             }
-
-            // Add cutting lines (light gray dotted)
-            const cuttingLines = [];
-            for (let i = 1; i < 4; i++) {
-                const x = marginX + i * fullW + (i - 0.5) * gSize;
-                cuttingLines.push({
-                    input: Buffer.from(`<svg width="2" height="${totalH}"><line x1="0" y1="0" x2="0" y2="${totalH}" stroke="#CCCCCC" stroke-width="2" stroke-dasharray="10,10"/></svg>`),
-                    top: marginY,
-                    left: Math.round(x)
-                });
-            }
-            const midY = marginY + fullH + gSize / 2;
-            cuttingLines.push({
-                input: Buffer.from(`<svg width="${totalW}" height="2"><line x1="0" y1="0" x2="${totalW}" y2="0" stroke="#CCCCCC" stroke-width="2" stroke-dasharray="10,10"/></svg>`),
-                top: Math.round(midY),
-                left: marginX
-            });
-
-            compositeArr.push(...cuttingLines);
 
             finalOutput = sharp({
                 create: { width: sW, height: sH, channels: 4, background: { r: 255, g: 255, b: 255, alpha: 1 } }
@@ -357,6 +360,27 @@ const uploadHandler = [
             const marginX = Math.floor((sW - totalW) / 2);
             const marginY = Math.floor((sH - totalH) / 2);
 
+            // Initialize composite array with cutting lines FIRST
+            const compositeArr = [];
+
+            // Vertical dotted guides
+            for (let i = 1; i < 4; i++) {
+                const x = marginX + i * fullW + (i - 0.5) * gSize;
+                compositeArr.push({
+                    input: Buffer.from(`<svg width="2" height="${totalH}"><line x1="0" y1="0" x2="0" y2="${totalH}" stroke="#DDDDDD" stroke-width="2" stroke-dasharray="10,10"/></svg>`),
+                    top: marginY,
+                    left: Math.round(x)
+                });
+            }
+            
+            // Horizontal dotted guide
+            const midY = marginY + fullH + gSize / 2;
+            compositeArr.push({
+                input: Buffer.from(`<svg width="${totalW}" height="2"><line x1="0" y1="0" x2="${totalW}" y2="0" stroke="#DDDDDD" stroke-width="2" stroke-dasharray="10,10"/></svg>`),
+                top: Math.round(midY),
+                left: marginX
+            });
+
             for (let row = 0; row < 2; row++) {
                 for (let col = 0; col < 4; col++) {
                     compositeArr.push({
@@ -366,29 +390,6 @@ const uploadHandler = [
                     });
                 }
             }
-
-            // Add cutting lines (light gray)
-            const cuttingLines = [];
-            
-            // Vertical dotted guides
-            for (let i = 1; i < 4; i++) {
-                const x = marginX + i * fullW + (i - 0.5) * gSize;
-                cuttingLines.push({
-                    input: Buffer.from(`<svg width="2" height="${totalH}"><line x1="0" y1="0" x2="0" y2="${totalH}" stroke="#CCCCCC" stroke-width="2" stroke-dasharray="10,10"/></svg>`),
-                    top: marginY,
-                    left: Math.round(x)
-                });
-            }
-            
-            // Horizontal dotted guide
-            const midY = marginY + fullH + gSize / 2;
-            cuttingLines.push({
-                input: Buffer.from(`<svg width="${totalW}" height="2"><line x1="0" y1="0" x2="${totalW}" y2="0" stroke="#CCCCCC" stroke-width="2" stroke-dasharray="10,10"/></svg>`),
-                top: Math.round(midY),
-                left: marginX
-            });
-
-            compositeArr.push(...cuttingLines);
 
             finalOutput = sharp({
                 create: { width: sW, height: sH, channels: 4, background: { r: 255, g: 255, b: 255, alpha: 1 } }

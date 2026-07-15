@@ -156,16 +156,10 @@ def main():
                             $graphics.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::HighQuality
                             $graphics.PixelOffsetMode = [System.Drawing.Drawing2D.PixelOffsetMode]::HighQuality
                             
-                            # Use page area with a tiny safety margin (2% buffer) to avoid cutting
-                            $pBounds = $e.PageBounds
-                            $safeMarginX = $pBounds.Width * 0.02
-                            $safeMarginY = $pBounds.Height * 0.02
+                            # Use VisibleClipBounds which represents the actual printable area
+                            $rect = $e.Graphics.VisibleClipBounds
+                            Write-Host "Printable Area: $($rect.Width)x$($rect.Height) at ($($rect.X),$($rect.Y))"
                             
-                            $rect = New-Object System.Drawing.RectangleF($safeMarginX, $safeMarginY, $pBounds.Width - ($safeMarginX * 2), $pBounds.Height - ($safeMarginY * 2))
-                            
-                            Write-Host "Printing to Area: $($rect.Width)x$($rect.Height) inside $($pBounds.Width)x$($pBounds.Height)"
-                            
-                            # Preserve Aspect Ratio to avoid "daba hua" (squashed) look
                             $imageRatio = $img.Width / $img.Height
                             $pageRatio = $rect.Width / $rect.Height
                             
@@ -184,7 +178,7 @@ def main():
                                 $offsetX = $rect.X + ($rect.Width - $drawWidth) / 2
                             }}
                             
-                            # Draw image centered with high quality scaling
+                            # Draw image using float coordinates
                             $graphics.DrawImage($img, [float]$offsetX, [float]$offsetY, [float]$drawWidth, [float]$drawHeight)
                             $e.HasMorePages = $false
                         }} catch {{
