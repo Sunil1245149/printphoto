@@ -28,20 +28,6 @@ def install_dependencies():
             print(f"❌ Auto-installation failed: {e}")
             return False
 
-def print_banner():
-    try:
-        os.system('cls' if os.name == 'nt' else 'clear')
-    except:
-        pass
-    print("="*65)
-    print("🖨️  EASY-PRINT LOCAL PRINT AGENT (ऑटो-प्रिंट एजेंट)")
-    print("="*65)
-    print("हिन्दी निर्देश: यह प्रोग्राम आपके कंप्यूटर को प्रिंटर से जोड़ता है।")
-    print("अगर आप AI Studio का URL डाल रहे हैं और 404 आ रहा है, ")
-    print("तो इसका मतलब है कि सर्वर वहां नहीं चल रहा।")
-    print("अपना Render.com वाला URL इस्तेमाल करें।")
-    print("="*65)
-
 def main():
     if not install_dependencies():
         print("\nManually run: pip install \"python-socketio[client]\" requests")
@@ -85,6 +71,20 @@ def main():
         engineio_logger=False
     )
 
+    def print_banner():
+        try:
+            os.system('cls' if os.name == 'nt' else 'clear')
+        except:
+            pass
+        print("="*65)
+        print("🖨️  EASY-PRINT LOCAL PRINT AGENT (ऑटो-प्रिंट एजेंट)")
+        print("="*65)
+        print("हिन्दी निर्देश: यह प्रोग्राम आपके कंप्यूटर को प्रिंटर से जोड़ता है।")
+        print("अगर आप AI Studio का URL डाल रहे हैं और 404 आ रहा है, ")
+        print("तो इसका मतलब है कि सर्वर वहां नहीं चल रहा।")
+        print("अपना Render.com वाला URL इस्तेमाल करें।")
+        print("="*65)
+
     @sio.event
     def connect():
         print(f"\n✅ Connected to Server: {sio.connection_url}")
@@ -99,7 +99,6 @@ def main():
     @sio.on('print_job')
     def on_print_job(data):
         url = data.get('url')
-        job_id = data.get('jobId')
         if not url: return
         
         # Build absolute URL correctly
@@ -131,9 +130,6 @@ def main():
                     $doc.DocumentName = "Passport Photo Print"
                     $img = [System.Drawing.Image]::FromFile("{escaped_path}")
                     
-                    # Use StandardPrintController to suppress the "Printing..." status dialog
-                    $doc.PrintController = New-Object System.Drawing.Printing.StandardPrintController
-                    
                     # Auto Orientation: Width > Height means 8 photos (Landscape), else 4 photos (Portrait)
                     if ($img.Width -gt $img.Height) {{
                         $doc.DefaultPageSettings.Landscape = $true
@@ -144,7 +140,7 @@ def main():
                     # Ensure Color mode is enabled
                     $doc.DefaultPageSettings.Color = $true
                     
-                    # Set margins to 0 for full 4x6 printing (we handle margins in layout)
+                    # Set margins to 0 for full 4x6 printing
                     $doc.DefaultPageSettings.Margins = New-Object System.Drawing.Printing.Margins(0,0,0,0)
                     $doc.OriginAtMargins = $false
                     
@@ -152,34 +148,11 @@ def main():
                         param($sender, $e)
                         try {{
                             $graphics = $e.Graphics
-                            $graphics.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
-                            $graphics.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::HighQuality
-                            $graphics.PixelOffsetMode = [System.Drawing.Drawing2D.PixelOffsetMode]::HighQuality
+                            # Use full page area to avoid stretching and respect orientation
+                            $rect = $e.PageBounds
                             
-                            # Use VisibleClipBounds which represents the actual printable area
-                            $rect = $e.Graphics.VisibleClipBounds
-                            Write-Host "Printable Area: $($rect.Width)x$($rect.Height) at ($($rect.X),$($rect.Y))"
-                            
-                            $imageRatio = $img.Width / $img.Height
-                            $pageRatio = $rect.Width / $rect.Height
-                            
-                            $drawWidth = $rect.Width
-                            $drawHeight = $rect.Height
-                            $offsetX = $rect.X
-                            $offsetY = $rect.Y
-                            
-                            if ($imageRatio -gt $pageRatio) {{
-                                # Image is wider than page ratio
-                                $drawHeight = $rect.Width / $imageRatio
-                                $offsetY = $rect.Y + ($rect.Height - $drawHeight) / 2
-                            }} else {{
-                                # Image is taller than page ratio
-                                $drawWidth = $rect.Height * $imageRatio
-                                $offsetX = $rect.X + ($rect.Width - $drawWidth) / 2
-                            }}
-                            
-                            # Draw image using float coordinates
-                            $graphics.DrawImage($img, [float]$offsetX, [float]$offsetY, [float]$drawWidth, [float]$drawHeight)
+                            # Draw image to fill the paper exactly (4x6 area)
+                            $graphics.DrawImage($img, 0, 0, $rect.Width, $rect.Height)
                             $e.HasMorePages = $false
                         }} catch {{
                             Write-Error "Error in PrintPage: $_"

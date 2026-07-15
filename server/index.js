@@ -90,13 +90,12 @@ const uploadHandler = [
             const sheetWidth = 1800; // 6 inch at 300 DPI
             const sheetHeight = 1200; // 4 inch at 300 DPI
             
-            // Base sizes for all copies (Standard India Passport size: 3.5cm x 4.5cm)
-            // Reduced further for safe printable area margins (approx 3.0cm x 3.9cm at 300 DPI)
-            const pWidth = 360; 
-            const pHeight = 460; 
+            // Base sizes for all copies (Consistent and safe for printing)
+            const pWidth = 350; 
+            const pHeight = 450; 
             
-            const borderSize = 1;
-            const gapSize = 50; 
+            const borderSize = 2;
+            const gapSize = 25; 
 
             // Helper to process a single photo
             const processPhoto = async (file) => {
@@ -211,45 +210,25 @@ const uploadHandler = [
 
         if (layout === "4") {
             const photo = processedPhotos[0];
-            const fullW = pWidth + borderSize * 2;
-            const fullH = pHeight + borderSize * 2;
+            const fullW = pWidth + (borderSize + gapSize) * 2;
+            const fullH = pHeight + (borderSize + gapSize) * 2;
             
-            // 4 copies in Portrait orientation (4x6 Portrait)
+            // 4 copies in Portrait orientation (1200x1800)
             const sW = 1200;
             const sH = 1800;
             
-            const gSize = gapSize; // Consistently large gap
-            
-            // 2x2 grid
-            const totalW = (fullW * 2) + gSize;
-            const totalH = (fullH * 2) + gSize;
+            const totalW = (fullW * 2) + gapSize;
+            const totalH = (fullH * 2) + gapSize;
 
             const marginX = Math.floor((sW - totalW) / 2);
             const marginY = Math.floor((sH - totalH) / 2);
 
-            // Initialize with cutting lines (drawn first/underneath)
             compositeArr = [
-                // Vertical guide
-                {
-                    input: Buffer.from(`<svg width="2" height="${totalH}"><line x1="0" y1="0" x2="0" y2="${totalH}" stroke="#DDDDDD" stroke-width="2" stroke-dasharray="10,10"/></svg>`),
-                    top: marginY,
-                    left: Math.round(marginX + fullW + gSize / 2)
-                },
-                // Horizontal guide
-                {
-                    input: Buffer.from(`<svg width="${totalW}" height="2"><line x1="0" y1="0" x2="${totalW}" y2="0" stroke="#DDDDDD" stroke-width="2" stroke-dasharray="10,10"/></svg>`),
-                    top: Math.round(marginY + fullH + gSize / 2),
-                    left: marginX
-                }
-            ];
-
-            // Add photos on top
-            compositeArr.push(
                 { input: photo, top: marginY, left: marginX },
-                { input: photo, top: marginY, left: marginX + fullW + gSize },
-                { input: photo, top: marginY + fullH + gSize, left: marginX },
-                { input: photo, top: marginY + fullH + gSize, left: marginX + fullW + gSize }
-            );
+                { input: photo, top: marginY, left: marginX + fullW + gapSize },
+                { input: photo, top: marginY + fullH + gapSize, left: marginX },
+                { input: photo, top: marginY + fullH + gapSize, left: marginX + fullW + gapSize }
+            ];
             
             finalOutput = sharp({
                 create: { width: sW, height: sH, channels: 4, background: { r: 255, g: 255, b: 255, alpha: 1 } }
@@ -257,60 +236,27 @@ const uploadHandler = [
         } else if (layout === "2x4") {
             const photo1 = processedPhotos[0];
             const photo2 = processedPhotos[1] || processedPhotos[0];
-            const fullW = pWidth + borderSize * 2;
-            const fullH = pHeight + borderSize * 2;
+            const fullW = pWidth + (borderSize + gapSize) * 2;
+            const fullH = pHeight + (borderSize + gapSize) * 2;
             
-            // On 6x4 Landscape (1800x1200)
-            const sW = 1800;
-            const sH = 1200;
+            // On 1800x1200 (6x4 Landscape)
+            const interGapX = 0; 
+            const interGapY = 0; 
+            const totalW = (fullW * 4);
+            const totalH = (fullH * 2);
 
-            const gSize = gapSize; // Consistently large gap
+            const marginX = Math.floor((sheetWidth - totalW) / 2);
+            const marginY = Math.floor((sheetHeight - totalH) / 2);
 
-            // Initialize composite array with cutting lines FIRST (so they stay behind photos)
-            const compositeArr = [];
-
-            const totalW = (fullW * 4) + (gSize * 3);
-            const totalH = (fullH * 2) + gSize;
-
-            const marginX = Math.floor((sW - totalW) / 2);
-            const marginY = Math.floor((sH - totalH) / 2);
-
-            // Vertical dotted guides
-            for (let i = 1; i < 4; i++) {
-                const x = marginX + i * fullW + (i - 0.5) * gSize;
-                compositeArr.push({
-                    input: Buffer.from(`<svg width="2" height="${totalH}"><line x1="0" y1="0" x2="0" y2="${totalH}" stroke="#DDDDDD" stroke-width="2" stroke-dasharray="10,10"/></svg>`),
-                    top: marginY,
-                    left: Math.round(x)
-                });
-            }
-            
-            // Horizontal dotted guide
-            const midY = marginY + fullH + gSize / 2;
-            compositeArr.push({
-                input: Buffer.from(`<svg width="${totalW}" height="2"><line x1="0" y1="0" x2="${totalW}" y2="0" stroke="#DDDDDD" stroke-width="2" stroke-dasharray="10,10"/></svg>`),
-                top: Math.round(midY),
-                left: marginX
-            });
-
-            // Add photos on top
             for (let i = 0; i < 4; i++) {
-                compositeArr.push({ 
-                    input: photo1, 
-                    top: marginY, 
-                    left: marginX + i * (fullW + gSize) 
-                });
+                compositeArr.push({ input: photo1, top: marginY, left: marginX + i * fullW });
             }
             for (let i = 0; i < 4; i++) {
-                compositeArr.push({ 
-                    input: photo2, 
-                    top: marginY + fullH + gSize, 
-                    left: marginX + i * (fullW + gSize) 
-                });
+                compositeArr.push({ input: photo2, top: marginY + fullH, left: marginX + i * fullW });
             }
 
             finalOutput = sharp({
-                create: { width: sW, height: sH, channels: 4, background: { r: 255, g: 255, b: 255, alpha: 1 } }
+                create: { width: 1800, height: 1200, channels: 4, background: { r: 255, g: 255, b: 255, alpha: 1 } }
             });
         } else if (layout === "Single") {
             const photoBuffer = await fs.readFile(files[0].path);
@@ -345,54 +291,29 @@ const uploadHandler = [
             compositeArr = []; 
         } else {
             const photo = processedPhotos[0];
-            const fullW = pWidth + borderSize * 2;
-            const fullH = pHeight + borderSize * 2;
+            const fullW = pWidth + (borderSize + gapSize) * 2;
+            const fullH = pHeight + (borderSize + gapSize) * 2;
             
-            // 8 copies in Landscape orientation (4x6 Landscape)
-            const sW = 1800;
-            const sH = 1200;
+            const interGapX = 0; 
+            const interGapY = 0; 
+            const totalW = (fullW * 4);
+            const totalH = (fullH * 2);
 
-            const gSize = gapSize; // Consistently large gap
-
-            const totalW = (fullW * 4) + (gSize * 3);
-            const totalH = (fullH * 2) + gSize;
-
-            const marginX = Math.floor((sW - totalW) / 2);
-            const marginY = Math.floor((sH - totalH) / 2);
-
-            // Initialize composite array with cutting lines FIRST
-            const compositeArr = [];
-
-            // Vertical dotted guides
-            for (let i = 1; i < 4; i++) {
-                const x = marginX + i * fullW + (i - 0.5) * gSize;
-                compositeArr.push({
-                    input: Buffer.from(`<svg width="2" height="${totalH}"><line x1="0" y1="0" x2="0" y2="${totalH}" stroke="#DDDDDD" stroke-width="2" stroke-dasharray="10,10"/></svg>`),
-                    top: marginY,
-                    left: Math.round(x)
-                });
-            }
-            
-            // Horizontal dotted guide
-            const midY = marginY + fullH + gSize / 2;
-            compositeArr.push({
-                input: Buffer.from(`<svg width="${totalW}" height="2"><line x1="0" y1="0" x2="${totalW}" y2="0" stroke="#DDDDDD" stroke-width="2" stroke-dasharray="10,10"/></svg>`),
-                top: Math.round(midY),
-                left: marginX
-            });
+            const marginX = Math.floor((sheetWidth - totalW) / 2);
+            const marginY = Math.floor((sheetHeight - totalH) / 2);
 
             for (let row = 0; row < 2; row++) {
                 for (let col = 0; col < 4; col++) {
                     compositeArr.push({
                         input: photo,
-                        top: marginY + row * (fullH + gSize),
-                        left: marginX + col * (fullW + gSize)
+                        top: marginY + row * fullH,
+                        left: marginX + col * fullW
                     });
                 }
             }
 
             finalOutput = sharp({
-                create: { width: sW, height: sH, channels: 4, background: { r: 255, g: 255, b: 255, alpha: 1 } }
+                create: { width: 1800, height: 1200, channels: 4, background: { r: 255, g: 255, b: 255, alpha: 1 } }
             });
         }
 
