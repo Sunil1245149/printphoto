@@ -90,12 +90,13 @@ const uploadHandler = [
             const sheetWidth = 1800; // 6 inch at 300 DPI
             const sheetHeight = 1200; // 4 inch at 300 DPI
             
-            // Base sizes for all copies (Slightly reduced for margin safety)
-            const pWidth = 390; 
-            const pHeight = 505; 
+            // Base sizes for all copies (Standard India Passport: 3.5x4.5cm)
+            // Reducing slightly further for safe printable area margins
+            const pWidth = 380; 
+            const pHeight = 490; 
             
             const borderSize = 1;
-            const gapSize = 30; 
+            const gapSize = 25; 
 
             // Helper to process a single photo
             const processPhoto = async (file) => {
@@ -240,12 +241,15 @@ const uploadHandler = [
             const fullW = pWidth + borderSize * 2;
             const fullH = pHeight + borderSize * 2;
             
-            // On 1800x1200 (6x4 Landscape)
+            // On 6x4 Landscape (1800x1200)
+            const sW = 1800;
+            const sH = 1200;
+
             const totalW = (fullW * 4) + (gapSize * 3);
             const totalH = (fullH * 2) + gapSize;
 
-            const marginX = Math.floor((sheetWidth - totalW) / 2);
-            const marginY = Math.floor((sheetHeight - totalH) / 2);
+            const marginX = Math.floor((sW - totalW) / 2);
+            const marginY = Math.floor((sH - totalH) / 2);
 
             for (let i = 0; i < 4; i++) {
                 compositeArr.push({ 
@@ -263,7 +267,7 @@ const uploadHandler = [
             }
 
             finalOutput = sharp({
-                create: { width: 1800, height: 1200, channels: 4, background: { r: 255, g: 255, b: 255, alpha: 1 } }
+                create: { width: sW, height: sH, channels: 4, background: { r: 255, g: 255, b: 255, alpha: 1 } }
             });
         } else if (layout === "Single") {
             const photoBuffer = await fs.readFile(files[0].path);
