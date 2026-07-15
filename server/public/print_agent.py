@@ -157,8 +157,27 @@ def main():
                             $rect = $e.PageBounds
                             Write-Host "Printing to area: $($rect.Width)x$($rect.Height) (Orientation: $($doc.DefaultPageSettings.Landscape))"
                             
-                            # Draw image to fill the paper exactly
-                            $graphics.DrawImage($img, 0, 0, $rect.Width, $rect.Height)
+                            # Preserve Aspect Ratio to avoid "daba hua" (squashed) look
+                            $imageRatio = $img.Width / $img.Height
+                            $pageRatio = $rect.Width / $rect.Height
+                            
+                            $drawWidth = $rect.Width
+                            $drawHeight = $rect.Height
+                            $offsetX = 0
+                            $offsetY = 0
+                            
+                            if ($imageRatio -gt $pageRatio) {
+                                # Image is wider than page ratio (e.g. landscape on portrait paper)
+                                $drawHeight = $rect.Width / $imageRatio
+                                $offsetY = ($rect.Height - $drawHeight) / 2
+                            } else {
+                                # Image is taller than page ratio
+                                $drawWidth = $rect.Height * $imageRatio
+                                $offsetX = ($rect.Width - $drawWidth) / 2
+                            }
+                            
+                            # Draw image centered with high quality scaling
+                            $graphics.DrawImage($img, [float]$offsetX, [float]$offsetY, [float]$drawWidth, [float]$drawHeight)
                             $e.HasMorePages = $false
                         }} catch {{
                             Write-Error "Error in PrintPage: $_"

@@ -90,13 +90,13 @@ const uploadHandler = [
             const sheetWidth = 1800; // 6 inch at 300 DPI
             const sheetHeight = 1200; // 4 inch at 300 DPI
             
-            // Base sizes for all copies (Standard India Passport: 3.5x4.5cm)
-            // Reducing slightly further for safe printable area margins
-            const pWidth = 380; 
-            const pHeight = 490; 
+            // Base sizes for all copies (Standard India Passport size: 3.5cm x 4.5cm)
+            // At 300 DPI: 3.5 / 2.54 * 300 = 413, 4.5 / 2.54 * 300 = 531
+            const pWidth = 413; 
+            const pHeight = 531; 
             
             const borderSize = 1;
-            const gapSize = 25; 
+            const gapSize = 30; 
 
             // Helper to process a single photo
             const processPhoto = async (file) => {
@@ -218,19 +218,38 @@ const uploadHandler = [
             const sW = 1200;
             const sH = 1800;
             
+            const gSize = 80; // Larger gap for 4 copies
+            
             // 2x2 grid
-            const totalW = (fullW * 2) + gapSize;
-            const totalH = (fullH * 2) + gapSize;
+            const totalW = (fullW * 2) + gSize;
+            const totalH = (fullH * 2) + gSize;
 
             const marginX = Math.floor((sW - totalW) / 2);
             const marginY = Math.floor((sH - totalH) / 2);
 
             compositeArr = [
                 { input: photo, top: marginY, left: marginX },
-                { input: photo, top: marginY, left: marginX + fullW + gapSize },
-                { input: photo, top: marginY + fullH + gapSize, left: marginX },
-                { input: photo, top: marginY + fullH + gapSize, left: marginX + fullW + gapSize }
+                { input: photo, top: marginY, left: marginX + fullW + gSize },
+                { input: photo, top: marginY + fullH + gSize, left: marginX },
+                { input: photo, top: marginY + fullH + gSize, left: marginX + fullW + gSize }
             ];
+
+            // Add cutting lines (light gray dotted)
+            const cuttingLines = [
+                // Vertical guide
+                {
+                    input: Buffer.from(`<svg width="2" height="${totalH}"><line x1="0" y1="0" x2="0" y2="${totalH}" stroke="#CCCCCC" stroke-width="2" stroke-dasharray="10,10"/></svg>`),
+                    top: marginY,
+                    left: Math.round(marginX + fullW + gSize / 2)
+                },
+                // Horizontal guide
+                {
+                    input: Buffer.from(`<svg width="${totalW}" height="2"><line x1="0" y1="0" x2="${totalW}" y2="0" stroke="#CCCCCC" stroke-width="2" stroke-dasharray="10,10"/></svg>`),
+                    top: Math.round(marginY + fullH + gSize / 2),
+                    left: marginX
+                }
+            ];
+            compositeArr.push(...cuttingLines);
             
             finalOutput = sharp({
                 create: { width: sW, height: sH, channels: 4, background: { r: 255, g: 255, b: 255, alpha: 1 } }
@@ -245,8 +264,10 @@ const uploadHandler = [
             const sW = 1800;
             const sH = 1200;
 
-            const totalW = (fullW * 4) + (gapSize * 3);
-            const totalH = (fullH * 2) + gapSize;
+            const gSize = 30; // Consistent gap
+
+            const totalW = (fullW * 4) + (gSize * 3);
+            const totalH = (fullH * 2) + gSize;
 
             const marginX = Math.floor((sW - totalW) / 2);
             const marginY = Math.floor((sH - totalH) / 2);
@@ -255,16 +276,35 @@ const uploadHandler = [
                 compositeArr.push({ 
                     input: photo1, 
                     top: marginY, 
-                    left: marginX + i * (fullW + gapSize) 
+                    left: marginX + i * (fullW + gSize) 
                 });
             }
             for (let i = 0; i < 4; i++) {
                 compositeArr.push({ 
                     input: photo2, 
-                    top: marginY + fullH + gapSize, 
-                    left: marginX + i * (fullW + gapSize) 
+                    top: marginY + fullH + gSize, 
+                    left: marginX + i * (fullW + gSize) 
                 });
             }
+
+            // Add cutting lines (light gray dotted)
+            const cuttingLines = [];
+            for (let i = 1; i < 4; i++) {
+                const x = marginX + i * fullW + (i - 0.5) * gSize;
+                cuttingLines.push({
+                    input: Buffer.from(`<svg width="2" height="${totalH}"><line x1="0" y1="0" x2="0" y2="${totalH}" stroke="#CCCCCC" stroke-width="2" stroke-dasharray="10,10"/></svg>`),
+                    top: marginY,
+                    left: Math.round(x)
+                });
+            }
+            const midY = marginY + fullH + gSize / 2;
+            cuttingLines.push({
+                input: Buffer.from(`<svg width="${totalW}" height="2"><line x1="0" y1="0" x2="${totalW}" y2="0" stroke="#CCCCCC" stroke-width="2" stroke-dasharray="10,10"/></svg>`),
+                top: Math.round(midY),
+                left: marginX
+            });
+
+            compositeArr.push(...cuttingLines);
 
             finalOutput = sharp({
                 create: { width: sW, height: sH, channels: 4, background: { r: 255, g: 255, b: 255, alpha: 1 } }
@@ -309,8 +349,10 @@ const uploadHandler = [
             const sW = 1800;
             const sH = 1200;
 
-            const totalW = (fullW * 4) + (gapSize * 3);
-            const totalH = (fullH * 2) + gapSize;
+            const gSize = 30; // Consistent gap
+
+            const totalW = (fullW * 4) + (gSize * 3);
+            const totalH = (fullH * 2) + gSize;
 
             const marginX = Math.floor((sW - totalW) / 2);
             const marginY = Math.floor((sH - totalH) / 2);
@@ -319,11 +361,34 @@ const uploadHandler = [
                 for (let col = 0; col < 4; col++) {
                     compositeArr.push({
                         input: photo,
-                        top: marginY + row * (fullH + gapSize),
-                        left: marginX + col * (fullW + gapSize)
+                        top: marginY + row * (fullH + gSize),
+                        left: marginX + col * (fullW + gSize)
                     });
                 }
             }
+
+            // Add cutting lines (light gray)
+            const cuttingLines = [];
+            
+            // Vertical dotted guides
+            for (let i = 1; i < 4; i++) {
+                const x = marginX + i * fullW + (i - 0.5) * gSize;
+                cuttingLines.push({
+                    input: Buffer.from(`<svg width="2" height="${totalH}"><line x1="0" y1="0" x2="0" y2="${totalH}" stroke="#CCCCCC" stroke-width="2" stroke-dasharray="10,10"/></svg>`),
+                    top: marginY,
+                    left: Math.round(x)
+                });
+            }
+            
+            // Horizontal dotted guide
+            const midY = marginY + fullH + gSize / 2;
+            cuttingLines.push({
+                input: Buffer.from(`<svg width="${totalW}" height="2"><line x1="0" y1="0" x2="${totalW}" y2="0" stroke="#CCCCCC" stroke-width="2" stroke-dasharray="10,10"/></svg>`),
+                top: Math.round(midY),
+                left: marginX
+            });
+
+            compositeArr.push(...cuttingLines);
 
             finalOutput = sharp({
                 create: { width: sW, height: sH, channels: 4, background: { r: 255, g: 255, b: 255, alpha: 1 } }
