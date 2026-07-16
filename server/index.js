@@ -34,12 +34,47 @@ fs.ensureDirSync('outputs');
 fs.ensureDirSync('history');
 
 const settingsFile = 'settings.json';
+const historyFile = path.join('history', 'history.json');
+
 if (!fs.existsSync(settingsFile)) {
-    fs.writeJsonSync(settingsFile, { voiceEnabled: true, voiceLanguage: 'Hindi' });
+    fs.writeJsonSync(settingsFile, { 
+        voiceEnabled: true, 
+        voiceLanguage: 'Hindi',
+        shopName: 'Easy Photo Print'
+    });
 }
 
-let printQueue = [];
 let history = [];
+if (fs.existsSync(historyFile)) {
+    try {
+        history = fs.readJsonSync(historyFile);
+    } catch (e) {
+        history = [];
+    }
+}
+
+function saveHistory() {
+    fs.writeJsonSync(historyFile, history);
+}
+
+// Auto-cleanup: Delete files older than 24 hours
+setInterval(async () => {
+    const now = Date.now();
+    const expiry = 24 * 60 * 60 * 1000;
+    
+    // Cleanup outputs folder
+    const files = await fs.readdir('outputs');
+    for (const file of files) {
+        const filePath = path.join('outputs', file);
+        const stats = await fs.stat(filePath);
+        if (now - stats.mtimeMs > expiry) {
+            await fs.remove(filePath);
+            console.log(`Cleaned up old file: ${file}`);
+        }
+    }
+}, 60 * 60 * 1000); // Run every hour
+
+let printQueue = [];
 
 // API: Upload from Android App
 app.get('/', (req, res) => res.json({ status: 'online', message: 'Passport Print Server' }));
@@ -289,6 +324,31 @@ const uploadHandler = [
                 });
             
             compositeArr = []; 
+        } else if (layout === "Mixed") {
+            const fullW = pWidth + (borderSize + gapSize) * 2;
+            const fullH = pHeight + (borderSize + gapSize) * 2;
+            
+            const totalW = (fullW * 4);
+            const totalH = (fullH * 2);
+
+            const marginX = Math.floor((sheetWidth - totalW) / 2);
+            const marginY = Math.floor((sheetHeight - totalH) / 2);
+
+            // Use as many unique photos as available, up to 8
+            for (let i = 0; i < 8; i++) {
+                const photo = processedPhotos[i % processedPhotos.length];
+                const row = Math.floor(i / 4);
+                const col = i % 4;
+                compositeArr.push({
+                    input: photo,
+                    top: marginY + row * fullH,
+                    left: marginX + col * fullW
+                });
+            }
+
+            finalOutput = sharp({
+                create: { width: 1800, height: 1200, channels: 4, background: { r: 255, g: 255, b: 255, alpha: 1 } }
+            });
         } else {
             const photo = processedPhotos[0];
             const fullW = pWidth + (borderSize + gapSize) * 2;
@@ -338,6 +398,7 @@ const uploadHandler = [
         printQueue.push(job);
         history.unshift(job);
         if (history.length > 50) history.pop();
+        saveHistory();
 
         io.emit('job-completed', job);
         io.emit('print_job', { url: job.preview, id: job.id, layout: job.layout });
@@ -379,6 +440,21 @@ app.post('/api/print-success', (req, res) => {
 app.use((req, res) => {
     console.warn(`[404 NOT FOUND] ${req.method} ${req.url}`);
     res.status(404).json({ error: 'Route not found', path: req.url, method: req.method });
+});
+
+app.post('/api/delete-job', (req, res) => {
+    const { jobId } = req.body;
+    const index = history.findIndex(j => String(j.id) === String(jobId));
+    if (index !== -1) {
+        const job = history[index];
+        const filePath = path.join(__dirname, job.preview);
+        fs.remove(filePath).catch(console.error);
+        history.splice(index, 1);
+        saveHistory();
+        res.json({ success: true });
+    } else {
+        res.status(404).json({ error: 'Job not found' });
+    }
 });
 
 app.get('/history', (req, res) => {

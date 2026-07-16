@@ -33,8 +33,28 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 40px;
+            margin-bottom: 20px;
         }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 16px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .stat-card .label { font-size: 12px; font-weight: 600; color: var(--text-light); text-transform: uppercase; }
+        .stat-card .value { font-size: 24px; font-weight: 800; color: var(--text); }
+        .stat-card.highlight .value { color: var(--primary); }
+        .stat-card i { color: var(--primary); margin-bottom: 8px; font-size: 20px; }
+
         .logo {
             display: flex;
             align-items: center;
@@ -281,7 +301,7 @@
         <header>
             <div class="logo">
                 <i class="fas fa-print"></i>
-                <h1>PassportPrint Pro</h1>
+                <h1 id="shop-name-display">Easy Photo Print</h1>
             </div>
             <div class="header-actions">
                 <div class="server-status">
@@ -291,15 +311,52 @@
             </div>
         </header>
 
+        <div class="stats-grid">
+            <div class="stat-card highlight">
+                <i class="fas fa-rupee-sign"></i>
+                <span class="label">Aaj ki Kamai (Today)</span>
+                <span class="value" id="today-earnings">₹0</span>
+            </div>
+            <div class="stat-card">
+                <i class="fas fa-images"></i>
+                <span class="label">Today's Prints</span>
+                <span class="value" id="today-prints">0</span>
+            </div>
+            <div class="stat-card">
+                <i class="fas fa-calendar-day"></i>
+                <span class="label">Jobs Today</span>
+                <span class="value" id="today-jobs">0</span>
+            </div>
+            <div class="stat-card">
+                <i class="fas fa-database"></i>
+                <span class="label">Storage Cleanup</span>
+                <span class="value" style="font-size: 14px; color: var(--success);">Auto (24h)</span>
+            </div>
+        </div>
+
         <div class="main-grid">
             <!-- Sidebar Actions -->
             <div class="card">
                 <h3><i class="fas fa-bolt"></i> Quick Actions</h3>
-                <input type="file" id="manualUpload" multiple accept="image/*">
-                <button class="action-button primary" onclick="document.getElementById('manualUpload').click()">
-                    <i class="fas fa-cloud-upload-alt"></i> Manual Print Upload
+                
+                <!-- New Layout Buttons -->
+                <div id="selection-status" style="margin-bottom: 12px; font-size: 14px; color: var(--primary); font-weight: 600; display: none;">
+                    <i class="fas fa-check-circle"></i> <span id="selected-count">0</span> photos selected
+                </div>
+
+                <div class="layout-buttons" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px;">
+                    <button onclick="triggerUpload('8')" class="action-button primary" style="margin-bottom: 0;">8 Copies</button>
+                    <button onclick="triggerUpload('Mixed')" class="action-button primary" style="margin-bottom: 0; background: #6366f1;">8 Mixed</button>
+                    <button onclick="triggerUpload('4')" class="action-button" style="margin-bottom: 0;">4 Copies</button>
+                    <button onclick="triggerUpload('Single')" class="action-button" style="margin-bottom: 0;">Full Page</button>
+                </div>
+
+                <input type="file" id="manualUpload" multiple accept="image/*" style="display: none;">
+                <button class="action-button" onclick="document.getElementById('manualUpload').click()" style="border-style: dashed; border-width: 2px;">
+                    <i class="fas fa-plus"></i> Select Photo(s)
                 </button>
-                <div class="card">
+
+                <div class="card" style="margin-top: 20px;">
                     <h3><i class="fas fa-desktop"></i> Auto-Print Setup</h3>
                     <p style="font-size: 13px; color: var(--text-light);">Step 1: Install required library:</p>
                     <code style="display: block; background: #1e293b; color: #f1f5f9; padding: 12px; border-radius: 8px; font-size: 12px; margin-bottom: 12px;">
@@ -324,6 +381,10 @@
                 </div>
 
                 <h3 style="margin-top: 32px;"><i class="fas fa-cog"></i> Settings</h3>
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; font-size: 12px; font-weight: 600; color: var(--text-light); margin-bottom: 4px;">Shop Name</label>
+                    <input type="text" id="shopNameInput" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 14px;" placeholder="Enter Shop Name">
+                </div>
                 <label style="display: flex; align-items: center; gap: 10px; font-size: 14px; cursor: pointer;">
                     <input type="checkbox" id="voiceToggle" checked> Enable Voice Alerts
                 </label>
@@ -436,18 +497,61 @@
             }
         }
 
+        function updateStats() {
+            let totalEarnings = 0;
+            let totalPrints = 0;
+            let todayJobsCount = 0;
+            
+            const todayStr = new Date().toDateString();
+            
+            historyData.forEach(job => {
+                // Check if job is from today
+                // Note: job.id is a timestamp
+                const jobDate = new Date(job.id).toDateString();
+                if (jobDate === todayStr) {
+                    todayJobsCount++;
+                    const cleanLayout = String(job.layout).trim();
+                    if (cleanLayout === "4") {
+                        totalEarnings += 25;
+                        totalPrints += 4;
+                    } else if (cleanLayout === "8" || cleanLayout === "2x4") {
+                        totalEarnings += 50;
+                        totalPrints += 8;
+                    } else if (cleanLayout === "Single") {
+                        totalEarnings += 50;
+                        totalPrints += 1;
+                    }
+                }
+            });
+            
+            document.getElementById('today-earnings').innerText = `₹${totalEarnings}`;
+            document.getElementById('today-prints').innerText = totalPrints;
+            document.getElementById('today-jobs').innerText = todayJobsCount;
+        }
+
         socket.on('initial-data', (data) => {
             voiceEnabled = data.settings.voiceEnabled !== undefined ? data.settings.voiceEnabled : true;
             voiceLanguage = data.settings.voiceLanguage || 'Hindi';
+            const shopName = data.settings.shopName || 'Easy Photo Print';
+            
             voiceToggle.checked = voiceEnabled;
+            document.getElementById('shopNameInput').value = shopName;
+            document.getElementById('shop-name-display').innerText = shopName;
+            
             updateLangUI(voiceLanguage);
             historyData = data.history;
-            data.history.forEach(addJobToHistory);
+            refreshHistory();
             if (data.history.length > 0) {
                 currentJob = data.history[0];
                 updatePreview(currentJob);
             }
         });
+
+        document.getElementById('shopNameInput').onchange = () => {
+            const newName = document.getElementById('shopNameInput').value;
+            document.getElementById('shop-name-display').innerText = newName;
+            saveSettings();
+        };
 
         function updateLangUI(lang) {
             document.querySelectorAll('.lang-btn').forEach(btn => {
@@ -500,17 +604,77 @@
             }
         });
 
-        manualUpload.onchange = async () => {
-            const files = manualUpload.files;
-            if (!files.length) return;
+        let selectedFiles = [];
+
+        manualUpload.onchange = () => {
+            const files = Array.from(manualUpload.files);
+            if (files.length > 0) {
+                // Add new files to our accumulator, max 8
+                files.forEach(file => {
+                    if (selectedFiles.length < 8) {
+                        selectedFiles.push(file);
+                    }
+                });
+                renderSelectedFiles();
+            }
+            manualUpload.value = ''; // Reset input so same file can be picked again if needed
+        };
+
+        function renderSelectedFiles() {
+            const status = document.getElementById('selection-status');
+            const countSpan = document.getElementById('selected-count');
+            
+            if (selectedFiles.length > 0) {
+                status.style.display = 'block';
+                countSpan.innerText = selectedFiles.length;
+                
+                // Show small thumbnails or names
+                let listHtml = '<div style="display: flex; gap: 5px; flex-wrap: wrap; margin-top: 8px;">';
+                selectedFiles.forEach((f, idx) => {
+                    listHtml += `
+                        <div style="background: #f1f5f9; padding: 4px 8px; border-radius: 4px; font-size: 11px; display: flex; align-items: center; gap: 6px; border: 1px solid #e2e8f0;">
+                            <span>Photo ${idx+1}</span>
+                            <i class="fas fa-times" onclick="removeFile(${idx})" style="color: #ef4444; cursor: pointer;"></i>
+                        </div>
+                    `;
+                });
+                listHtml += '</div>';
+                
+                // Remove old list if exists
+                const oldList = status.querySelector('.file-list');
+                if (oldList) oldList.remove();
+                
+                const listDiv = document.createElement('div');
+                listDiv.className = 'file-list';
+                listDiv.innerHTML = listHtml;
+                status.appendChild(listDiv);
+            } else {
+                status.style.display = 'none';
+            }
+        }
+
+        function removeFile(idx) {
+            selectedFiles.splice(idx, 1);
+            renderSelectedFiles();
+        }
+
+        async function triggerUpload(layout) {
+            if (!selectedFiles.length) {
+                alert("Please select photo(s) first!");
+                document.getElementById('manualUpload').click();
+                return;
+            }
 
             const formData = new FormData();
-            for (let i = 0; i < files.length; i++) {
-                formData.append('image', files[i]);
-            }
-            // Ask for layout
-            const layout = prompt("Enter Layout (4, 8, or 2x4):", "8") || "8";
+            selectedFiles.forEach(file => {
+                formData.append('image', file);
+            });
             formData.append('layout', layout);
+
+            const btn = event.target;
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+            btn.disabled = true;
 
             try {
                 const res = await fetch('/upload', {
@@ -518,14 +682,18 @@
                     body: formData
                 });
                 if (res.ok) {
-                    alert("Uploaded successfully! Check queue.");
+                    selectedFiles = []; // Clear selection
+                    renderSelectedFiles();
                 } else {
                     alert("Upload failed.");
                 }
             } catch (e) {
                 alert("Network error.");
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
             }
-        };
+        }
 
         voiceToggle.onchange = () => {
             voiceEnabled = voiceToggle.checked;
@@ -545,10 +713,11 @@
         }
 
         function saveSettings() {
+            const shopName = document.getElementById('shopNameInput').value;
             fetch('/settings', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ voiceLanguage, voiceEnabled })
+                body: JSON.stringify({ voiceLanguage, voiceEnabled, shopName })
             });
         }
 
@@ -643,9 +812,30 @@
                     <div class="job-id">Job #${job.id.toString().slice(-4)}</div>
                     <div class="job-time">${job.layout} Photos • ${job.time}</div>
                 </div>
-                <span class="job-status status-${job.status?.toLowerCase()}">${job.status}</span>
+                <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 8px;">
+                    <span class="job-status status-${job.status?.toLowerCase()}">${job.status}</span>
+                    <button onclick="deleteJob(${job.id})" style="background: none; border: none; color: #ef4444; cursor: pointer; font-size: 14px;">
+                        <i class="fas fa-trash-alt"></i>
+                    </button>
+                </div>
             `;
             return div;
+        }
+
+        async function deleteJob(id) {
+            if (!confirm("Are you sure you want to delete this job?")) return;
+            try {
+                const res = await fetch('/api/delete-job', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ jobId: id })
+                });
+                if (res.ok) {
+                    refreshHistory();
+                }
+            } catch (e) {
+                alert("Error deleting job");
+            }
         }
 
         function addJobToHistory(job) {
@@ -729,6 +919,7 @@
                     historyData = data;
                     historyList.innerHTML = '';
                     data.forEach(addJobToHistory);
+                    updateStats();
                 });
         }
     </script>
