@@ -374,6 +374,7 @@
         const manualUpload = document.getElementById('manualUpload');
 
         let currentJob = null;
+        let historyData = [];
         let processingInterval = null;
 
         function playTingDing() {
@@ -440,6 +441,7 @@
             voiceLanguage = data.settings.voiceLanguage || 'Hindi';
             voiceToggle.checked = voiceEnabled;
             updateLangUI(voiceLanguage);
+            historyData = data.history;
             data.history.forEach(addJobToHistory);
             if (data.history.length > 0) {
                 currentJob = data.history[0];
@@ -484,7 +486,14 @@
             stopProcessingTone();
             
             let layout = "8";
-            if (currentJob && currentJob.id == data.jobId) layout = currentJob.layout;
+            // Robust lookup: check currentJob or search historyData
+            if (currentJob && String(currentJob.id) == String(data.jobId)) {
+                layout = currentJob.layout;
+            } else {
+                // Search historyData if currentJob doesn't match
+                const pastJob = historyData.find(j => String(j.id) == String(data.jobId));
+                if (pastJob) layout = pastJob.layout;
+            }
             
             if (voiceEnabled) {
                 speak("finished", layout);
@@ -566,17 +575,20 @@
                     message = "Print is ready, starting printing now.";
                 }
             } else if (text === "finished") {
+                console.log("Speaking finished with layout:", layout);
                 let priceText = "पन्नास रुपये";
                 let hindiPrice = "पचास रुपये";
                 let englishPrice = "fifty rupees";
                 
-                // Price logic as requested: 4 photo -> 25, 8 or Full -> 50
-                if (layout === "4") {
+                // Price logic: 4 photos -> 25, others -> 50
+                // Use loose equality and trim to be safe
+                const cleanLayout = String(layout).trim();
+                if (cleanLayout === "4") {
                     priceText = "पंचवीस रुपये";
                     hindiPrice = "पच्चीस रुपये";
                     englishPrice = "twenty-five rupees";
                 } else {
-                    // 8 or Single/Full/2x4 all default to 50
+                    // Default to 50 for 8, 2x4, Single, etc.
                     priceText = "पन्नास रुपये";
                     hindiPrice = "पचास रुपये";
                     englishPrice = "fifty rupees";
@@ -714,6 +726,7 @@
             fetch('/history')
                 .then(r => r.json())
                 .then(data => {
+                    historyData = data;
                     historyList.innerHTML = '';
                     data.forEach(addJobToHistory);
                 });
