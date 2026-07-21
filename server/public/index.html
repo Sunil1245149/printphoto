@@ -301,7 +301,10 @@
         <header>
             <div class="logo">
                 <i class="fas fa-print"></i>
-                <h1 id="shop-name-display">Easy Photo Print</h1>
+                <div>
+                    <h1 id="shop-name-display">Easy Photo Print</h1>
+                    <span style="font-size: 10px; color: var(--success); font-weight: 700; text-transform: uppercase;"><i class="fas fa-scanner"></i> Scanner Active</span>
+                </div>
             </div>
             <div class="header-actions">
                 <div class="server-status">
@@ -511,6 +514,7 @@
         const manualUpload = document.getElementById('manualUpload');
 
         let currentJob = null;
+        let currentTab = 'passport';
         let historyData = [];
         let processingInterval = null;
 

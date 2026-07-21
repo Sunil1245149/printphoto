@@ -7,7 +7,6 @@ const Jimp = require('jimp');
 const path = require('path');
 const fs = require('fs-extra');
 const cors = require('cors');
-const sqlite3 = require('sqlite3').verbose();
 const QRCode = require('qrcode');
 
 const app = express();
@@ -34,24 +33,6 @@ sharp.cache(false);
 fs.ensureDirSync('uploads');
 fs.ensureDirSync('outputs');
 fs.ensureDirSync('history');
-
-// Initialize SQLite Database
-const db = new sqlite3.Database(path.join('history', 'database.sqlite'), (err) => {
-    if (err) console.error('Database connection error:', err);
-    else {
-        console.log('Connected to SQLite database');
-        db.run(`CREATE TABLE IF NOT EXISTS jobs (
-            id INTEGER PRIMARY KEY,
-            type TEXT,
-            status TEXT,
-            layout TEXT,
-            preview TEXT,
-            printer_id TEXT,
-            settings TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )`);
-    }
-});
 
 const settingsFile = 'settings.json';
 const historyFile = path.join('history', 'history.json');
@@ -168,9 +149,6 @@ app.post('/customer/upload', upload.any(), async (req, res) => {
             printer_id: printerId,
             time: new Date().toLocaleTimeString()
         };
-
-        db.run(`INSERT INTO jobs (id, type, status, preview, printer_id) VALUES (?, ?, ?, ?, ?)`, 
-            [job.id, job.type, job.status, job.preview, job.printer_id]);
 
         history.unshift(job);
         if (history.length > 100) history.pop();
@@ -476,9 +454,6 @@ const uploadHandler = [
             printer_id: 'passportPrinter',
             time: new Date().toLocaleTimeString()
         };
-
-        db.run(`INSERT INTO jobs (id, type, status, preview, printer_id, layout) VALUES (?, ?, ?, ?, ?, ?)`, 
-            [job.id, job.type, job.status, job.preview, job.printer_id, job.layout]);
 
         printQueue.push(job);
         history.unshift(job);
