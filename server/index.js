@@ -7,6 +7,8 @@ const Jimp = require('jimp');
 const path = require('path');
 const fs = require('fs-extra');
 const cors = require('cors');
+const sqlite3 = require('sqlite3').verbose();
+const QRCode = require('qrcode');
 
 const app = express();
 const server = http.createServer(app);
@@ -33,14 +35,32 @@ fs.ensureDirSync('uploads');
 fs.ensureDirSync('outputs');
 fs.ensureDirSync('history');
 
-const settingsFile = 'settings.json';
-const historyFile = path.join('history', 'history.json');
+// Initialize SQLite Database
+const db = new sqlite3.Database(path.join('history', 'database.sqlite'), (err) => {
+    if (err) console.error('Database connection error:', err);
+    else {
+        console.log('Connected to SQLite database');
+        db.run(`CREATE TABLE IF NOT EXISTS jobs (
+            id INTEGER PRIMARY KEY,
+            type TEXT,
+            status TEXT,
+            layout TEXT,
+            preview TEXT,
+            printer_id TEXT,
+            settings TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )`);
+    }
+});
 
+const settingsFile = 'settings.json';
 if (!fs.existsSync(settingsFile)) {
     fs.writeJsonSync(settingsFile, { 
         voiceEnabled: true, 
         voiceLanguage: 'Hindi',
-        shopName: 'Easy Photo Print'
+        shopName: 'Easy Photo Print',
+        passportPrinter: 'Default',
+        documentPrinter: 'Default'
     });
 }
 
@@ -79,6 +99,98 @@ let printQueue = [];
 // API: Upload from Android App
 app.get('/', (req, res) => res.json({ status: 'online', message: 'Passport Print Server' }));
 app.get('/ping', (req, res) => res.send('pong'));
+
+// Merchant QR Code API
+app.get('/api/qr', async (req, res) => {
+    try {
+        const host = req.get('host');
+        const url = `http://${host}/customer.html`;
+        const qrDataUrl = await QRCode.toDataURL(url);
+        res.json({ url, qr: qrDataUrl });
+    } catch (err) {
+        res.status(500).json({ error: 'QR Generation failed' });
+    }
+});
+
+// Customer Upload Handler
+app.post('/customer/upload', upload.any(), async (req, res) => {
+    try {
+        const { type } = req.body;
+        const files = req.files;
+        const timestamp = Date.now();
+        const outputPath = path.join('outputs', `customer_${timestamp}.png`);
+        
+        let jobType = type || 'id_card';
+        let preview = '';
+        let printerId = 'documentPrinter';
+
+        if (jobType === 'id_card') {
+            // Logic to arrange Front & Back on A4
+            const frontFile = files[0];
+            const backFile = files[1] || files[0];
+            
+            const idW = 1000; // Approx 3.3 inch at 300 DPI
+            const idH = 630;  // Approx 2.1 inch at 300 DPI
+            
+            const front = await sharp(frontFile.path).resize(idW, idH, { fit: 'cover' }).toBuffer();
+            const back = await sharp(backFile.path).resize(idW, idH, { fit: 'cover' }).toBuffer();
+            
+            // Create A4 Landscape (3508x2480 at 300 DPI) or smaller 1800x1200 for 6x4
+            // User said A4, but server seems optimized for 6x4 (1800x1200)
+            // Let's stick to 1800x1200 as it's standard for this app, but call it "ID Layout"
+            
+            const canvasW = 1800;
+            const canvasH = 1200;
+            
+            await sharp({
+                create: { width: canvasW, height: canvasH, channels: 4, background: { r: 255, g: 255, b: 255, alpha: 1 } }
+            })
+            .composite([
+                { input: front, top: 100, left: (canvasW - idW) / 2 },
+                { input: back, top: 100 + idH + 50, left: (canvasW - idW) / 2 }
+            ])
+            .png()
+            .toFile(outputPath);
+            
+            preview = `/outputs/customer_${timestamp}.png`;
+        } else if (jobType === 'pdf') {
+            // For PDF, we just store it and notify merchant
+            const pdfFile = files[0];
+            const destPath = path.join('outputs', `doc_${timestamp}.pdf`);
+            await fs.move(pdfFile.path, destPath);
+            preview = `/outputs/doc_${timestamp}.pdf`;
+            jobType = 'pdf';
+        }
+
+        const job = {
+            id: timestamp,
+            type: jobType,
+            status: 'Pending',
+            preview: preview,
+            printer_id: printerId,
+            time: new Date().toLocaleTimeString()
+        };
+
+        db.run(`INSERT INTO jobs (id, type, status, preview, printer_id) VALUES (?, ?, ?, ?, ?)`, 
+            [job.id, job.type, job.status, job.preview, job.printer_id]);
+
+        history.unshift(job);
+        if (history.length > 100) history.pop();
+        saveHistory();
+
+        io.emit('job-received', job);
+        io.emit('print_job', {
+            url: job.preview,
+            id: job.id,
+            type: job.type,
+            printer_id: 'documentPrinter'
+        });
+        res.json({ success: true, jobId: timestamp });
+    } catch (err) {
+        console.error('Customer Upload Error:', err);
+        res.status(500).json({ error: 'Upload failed' });
+    }
+});
 
 // Support both /upload and /api/upload
 const uploadHandler = [
@@ -244,7 +356,6 @@ const uploadHandler = [
             // ... (rest of layout logic)
 
         if (layout === "4") {
-            const photo = processedPhotos[0];
             const fullW = pWidth + (borderSize + gapSize) * 2;
             const fullH = pHeight + (borderSize + gapSize) * 2;
             
@@ -258,30 +369,35 @@ const uploadHandler = [
             const marginX = Math.floor((sW - totalW) / 2);
             const marginY = Math.floor((sH - totalH) / 2);
 
-            compositeArr = [
-                { input: photo, top: marginY, left: marginX },
-                { input: photo, top: marginY, left: marginX + fullW + gapSize },
-                { input: photo, top: marginY + fullH + gapSize, left: marginX },
-                { input: photo, top: marginY + fullH + gapSize, left: marginX + fullW + gapSize }
-            ];
+            for (let i = 0; i < 4; i++) {
+                const photo = processedPhotos[i % processedPhotos.length];
+                const row = Math.floor(i / 2);
+                const col = i % 2;
+                compositeArr.push({ 
+                    input: photo, 
+                    top: marginY + row * (fullH + gapSize), 
+                    left: marginX + col * (fullW + gapSize) 
+                });
+            }
             
             finalOutput = sharp({
                 create: { width: sW, height: sH, channels: 4, background: { r: 255, g: 255, b: 255, alpha: 1 } }
             });
         } else if (layout === "2x4") {
-            const photo1 = processedPhotos[0];
-            const photo2 = processedPhotos[1] || processedPhotos[0];
             const fullW = pWidth + (borderSize + gapSize) * 2;
             const fullH = pHeight + (borderSize + gapSize) * 2;
             
-            // On 1800x1200 (6x4 Landscape)
-            const interGapX = 0; 
-            const interGapY = 0; 
             const totalW = (fullW * 4);
             const totalH = (fullH * 2);
 
             const marginX = Math.floor((sheetWidth - totalW) / 2);
             const marginY = Math.floor((sheetHeight - totalH) / 2);
+
+            // Row 1: First photo (or first unique set)
+            // Row 2: Second photo (or second unique set)
+            // If only 1 photo provided, both rows same. If 2+, rows differ.
+            const photo1 = processedPhotos[0];
+            const photo2 = processedPhotos[1] || processedPhotos[0];
 
             for (let i = 0; i < 4; i++) {
                 compositeArr.push({ input: photo1, top: marginY, left: marginX + i * fullW });
@@ -298,10 +414,9 @@ const uploadHandler = [
             const metadata = await sharp(photoBuffer).metadata();
             const isLandscape = (metadata.width || 0) > (metadata.height || 0);
             
-            // 4x6 inches at 300 DPI is 1200x1800 or 1800x1200
             const targetW = isLandscape ? 1800 : 1200;
             const targetH = isLandscape ? 1200 : 1800;
-            const margin = 40; // Approx 3.4mm margin
+            const margin = 40; 
 
             finalOutput = sharp(photoBuffer)
                 .rotate()
@@ -311,20 +426,14 @@ const uploadHandler = [
                     kernel: sharp.kernel.lanczos3
                 })
                 .extend({
-                    top: margin,
-                    bottom: margin,
-                    left: margin,
-                    right: margin,
+                    top: margin, bottom: margin, left: margin, right: margin,
                     background: { r: 255, g: 255, b: 255, alpha: 1 }
                 })
-                .sharpen({
-                    sigma: 1.2,
-                    m1: 2,
-                    m2: 15
-                });
+                .sharpen({ sigma: 1.2, m1: 2, m2: 15 });
             
             compositeArr = []; 
-        } else if (layout === "Mixed") {
+        } else {
+            // Default 8 Copies (Handles "8", "Mixed", or anything else)
             const fullW = pWidth + (borderSize + gapSize) * 2;
             const fullH = pHeight + (borderSize + gapSize) * 2;
             
@@ -334,7 +443,6 @@ const uploadHandler = [
             const marginX = Math.floor((sheetWidth - totalW) / 2);
             const marginY = Math.floor((sheetHeight - totalH) / 2);
 
-            // Use as many unique photos as available, up to 8
             for (let i = 0; i < 8; i++) {
                 const photo = processedPhotos[i % processedPhotos.length];
                 const row = Math.floor(i / 4);
@@ -344,32 +452,6 @@ const uploadHandler = [
                     top: marginY + row * fullH,
                     left: marginX + col * fullW
                 });
-            }
-
-            finalOutput = sharp({
-                create: { width: 1800, height: 1200, channels: 4, background: { r: 255, g: 255, b: 255, alpha: 1 } }
-            });
-        } else {
-            const photo = processedPhotos[0];
-            const fullW = pWidth + (borderSize + gapSize) * 2;
-            const fullH = pHeight + (borderSize + gapSize) * 2;
-            
-            const interGapX = 0; 
-            const interGapY = 0; 
-            const totalW = (fullW * 4);
-            const totalH = (fullH * 2);
-
-            const marginX = Math.floor((sheetWidth - totalW) / 2);
-            const marginY = Math.floor((sheetHeight - totalH) / 2);
-
-            for (let row = 0; row < 2; row++) {
-                for (let col = 0; col < 4; col++) {
-                    compositeArr.push({
-                        input: photo,
-                        top: marginY + row * fullH,
-                        left: marginX + col * fullW
-                    });
-                }
             }
 
             finalOutput = sharp({
@@ -401,7 +483,12 @@ const uploadHandler = [
         saveHistory();
 
         io.emit('job-completed', job);
-        io.emit('print_job', { url: job.preview, id: job.id, layout: job.layout });
+        io.emit('print_job', { 
+            url: job.preview, 
+            id: job.id, 
+            layout: job.layout,
+            printer_id: 'passportPrinter' 
+        });
 
         res.status(200).json({ success: true, jobId: timestamp });
     } catch (err) {

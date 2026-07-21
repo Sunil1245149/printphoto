@@ -337,23 +337,49 @@
         <div class="main-grid">
             <!-- Sidebar Actions -->
             <div class="card">
+                <h3><i class="fas fa-qrcode"></i> Merchant QR</h3>
+                <div id="qr-container" style="text-align: center; background: white; padding: 15px; border-radius: 12px; border: 1px solid #e2e8f0; margin-bottom: 20px;">
+                    <img id="merchant-qr" style="width: 150px; height: 150px; background: #f8fafc; display: block; margin: 0 auto 10px;">
+                    <p style="font-size: 11px; color: var(--text-light); margin: 0;">Scan to upload ID Card/PDF</p>
+                    <a id="qr-link" target="_blank" style="font-size: 10px; color: var(--primary); text-decoration: none; display: block; margin-top: 5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"></a>
+                </div>
+
                 <h3><i class="fas fa-bolt"></i> Quick Actions</h3>
                 
-                <!-- New Layout Buttons -->
-                <div id="selection-status" style="margin-bottom: 12px; font-size: 14px; color: var(--primary); font-weight: 600; display: none;">
-                    <i class="fas fa-check-circle"></i> <span id="selected-count">0</span> photos selected
+                <!-- Selection Status & Accumulator -->
+                <div id="selection-status" style="margin-bottom: 15px; background: #eff6ff; padding: 12px; border-radius: 12px; border: 1px solid #dbeafe; display: none;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <span style="font-size: 14px; color: var(--primary); font-weight: 700;">
+                            <i class="fas fa-check-circle"></i> <span id="selected-count">0</span> Photos Selected
+                        </span>
+                        <button onclick="clearSelection()" style="background: none; border: none; color: #ef4444; font-size: 12px; font-weight: 600; cursor: pointer; padding: 0;">
+                            <i class="fas fa-trash"></i> Clear All
+                        </button>
+                    </div>
+                    <div class="file-list" style="display: flex; gap: 8px; flex-wrap: wrap;"></div>
+                    <p style="font-size: 11px; color: var(--text-light); margin-top: 8px; border-top: 1px solid #dbeafe; pt: 8px;">
+                        <i class="fas fa-info-circle"></i> Tip: Select photos one by one or all at once.
+                    </p>
                 </div>
 
                 <div class="layout-buttons" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px;">
-                    <button onclick="triggerUpload('8')" class="action-button primary" style="margin-bottom: 0;">8 Copies</button>
-                    <button onclick="triggerUpload('Mixed')" class="action-button primary" style="margin-bottom: 0; background: #6366f1;">8 Mixed</button>
-                    <button onclick="triggerUpload('4')" class="action-button" style="margin-bottom: 0;">4 Copies</button>
-                    <button onclick="triggerUpload('Single')" class="action-button" style="margin-bottom: 0;">Full Page</button>
+                    <button onclick="triggerUpload('8')" class="action-button primary" style="margin-bottom: 0;">
+                        <i class="fas fa-layer-group"></i> 8 Copies
+                    </button>
+                    <button onclick="triggerUpload('4')" class="action-button primary" style="margin-bottom: 0; background: #6366f1;">
+                        <i class="fas fa-th-large"></i> 4 Copies
+                    </button>
+                    <button onclick="triggerUpload('2x4')" class="action-button" style="margin-bottom: 0;">
+                        <i class="fas fa-columns"></i> 2x4 Layout
+                    </button>
+                    <button onclick="triggerUpload('Single')" class="action-button" style="margin-bottom: 0;">
+                        <i class="fas fa-expand"></i> Full Page
+                    </button>
                 </div>
 
                 <input type="file" id="manualUpload" multiple accept="image/*" style="display: none;">
-                <button class="action-button" onclick="document.getElementById('manualUpload').click()" style="border-style: dashed; border-width: 2px;">
-                    <i class="fas fa-plus"></i> Select Photo(s)
+                <button class="action-button" onclick="document.getElementById('manualUpload').click()" style="border-style: dashed; border-width: 2px; border-color: var(--primary); background: #f0f7ff;">
+                    <i class="fas fa-plus-circle"></i> Add Photo(s)
                 </button>
 
                 <div class="card" style="margin-top: 20px;">
@@ -380,7 +406,17 @@
                     </div>
                 </div>
 
-                <h3 style="margin-top: 32px;"><i class="fas fa-cog"></i> Settings</h3>
+                <h3 style="margin-top: 32px;"><i class="fas fa-print"></i> Printer Settings</h3>
+                <div style="margin-bottom: 12px;">
+                    <label style="display: block; font-size: 11px; font-weight: 600; color: var(--text-light); margin-bottom: 4px;">Passport Printer (App)</label>
+                    <input type="text" id="passportPrinter" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px;" placeholder="Printer Name">
+                </div>
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; font-size: 11px; font-weight: 600; color: var(--text-light); margin-bottom: 4px;">ID/PDF Printer (Scanner)</label>
+                    <input type="text" id="documentPrinter" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px;" placeholder="Printer Name">
+                </div>
+
+                <h3 style="margin-top: 32px;"><i class="fas fa-cog"></i> Shop Settings</h3>
                 <div style="margin-bottom: 15px;">
                     <label style="display: block; font-size: 12px; font-weight: 600; color: var(--text-light); margin-bottom: 4px;">Shop Name</label>
                     <input type="text" id="shopNameInput" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 14px;" placeholder="Enter Shop Name">
@@ -392,7 +428,11 @@
 
             <!-- History -->
             <div class="card">
-                <h3><i class="fas fa-history"></i> Live Print Queue</h3>
+                <div style="display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid #f1f5f9; padding-bottom: 10px;">
+                    <button class="lang-btn active" id="tab-passport" onclick="switchTab('passport')">Passport</button>
+                    <button class="lang-btn" id="tab-id" onclick="switchTab('id_card')">ID / PDF</button>
+                </div>
+                <h3 id="history-title"><i class="fas fa-history"></i> Live Print Queue</h3>
                 <div id="history-list" class="history-list">
                     <!-- History items -->
                 </div>
@@ -409,10 +449,45 @@
                         </div>
                     </div>
                     <div id="job-details" style="margin-top: 20px; display: none;">
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                             <span id="job-id-label" style="font-weight: 800; color: var(--primary);"></span>
-                            <button onclick="manualPrint()" style="background: none; border: 1px solid #e2e8f0; padding: 6px 12px; border-radius: 8px; cursor: pointer;">
-                                <i class="fas fa-print"></i>
+                            <div style="display: flex; gap: 8px;">
+                                <button onclick="autoEnhance()" class="action-button" style="margin: 0; padding: 6px 12px; font-size: 12px; background: #ecfdf5; border-color: #10b981; color: #065f46;">
+                                    <i class="fas fa-magic"></i> Auto Enhance
+                                </button>
+                                <button onclick="manualPrint()" class="action-button primary" style="margin: 0; padding: 6px 12px; font-size: 12px;">
+                                    <i class="fas fa-print"></i> Print Now
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Image Adjustments -->
+                        <div style="background: #f8fafc; padding: 15px; border-radius: 12px; border: 1px solid #e2e8f0;">
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 10px;">
+                                <div>
+                                    <label style="display: block; font-size: 11px; font-weight: 600; color: var(--text-light); margin-bottom: 5px;">Brightness</label>
+                                    <input type="range" id="adj-brightness" min="50" max="150" value="100" oninput="applyFilters()" style="width: 100%;">
+                                </div>
+                                <div>
+                                    <label style="display: block; font-size: 11px; font-weight: 600; color: var(--text-light); margin-bottom: 5px;">Contrast</label>
+                                    <input type="range" id="adj-contrast" min="50" max="150" value="100" oninput="applyFilters()" style="width: 100%;">
+                                </div>
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                                <div>
+                                    <label style="display: block; font-size: 11px; font-weight: 600; color: var(--text-light); margin-bottom: 5px;">Scale (%)</label>
+                                    <input type="range" id="adj-scale" min="50" max="150" value="100" oninput="applyFilters()" style="width: 100%;">
+                                </div>
+                                <div>
+                                    <label style="display: block; font-size: 11px; font-weight: 600; color: var(--text-light); margin-bottom: 5px;">Mode</label>
+                                    <select id="adj-mode" onchange="applyFilters()" style="width: 100%; padding: 4px; border-radius: 4px; border: 1px solid #e2e8f0; font-size: 12px;">
+                                        <option value="color">Color</option>
+                                        <option value="grayscale">Black & White</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <button onclick="resetFilters()" style="width: 100%; margin-top: 10px; background: none; border: none; font-size: 11px; color: var(--text-light); cursor: pointer;">
+                                <i class="fas fa-undo"></i> Reset All Adjustments
                             </button>
                         </div>
                     </div>
@@ -529,6 +604,28 @@
             document.getElementById('today-jobs').innerText = todayJobsCount;
         }
 
+        let currentTab = 'passport';
+
+        async function initMerchant() {
+            try {
+                const res = await fetch('/api/qr');
+                const data = await res.json();
+                document.getElementById('merchant-qr').src = data.qr;
+                document.getElementById('qr-link').href = data.url;
+                document.getElementById('qr-link').innerText = data.url;
+            } catch (e) {
+                console.error("QR Error:", e);
+            }
+        }
+        initMerchant();
+
+        function switchTab(tab) {
+            currentTab = tab;
+            document.getElementById('tab-passport').classList.toggle('active', tab === 'passport');
+            document.getElementById('tab-id').classList.toggle('active', tab === 'id_card');
+            refreshHistory();
+        }
+
         socket.on('initial-data', (data) => {
             voiceEnabled = data.settings.voiceEnabled !== undefined ? data.settings.voiceEnabled : true;
             voiceLanguage = data.settings.voiceLanguage || 'Hindi';
@@ -537,6 +634,10 @@
             voiceToggle.checked = voiceEnabled;
             document.getElementById('shopNameInput').value = shopName;
             document.getElementById('shop-name-display').innerText = shopName;
+            
+            // Printer settings
+            document.getElementById('passportPrinter').value = data.settings.passportPrinter || 'Default';
+            document.getElementById('documentPrinter').value = data.settings.documentPrinter || 'Default';
             
             updateLangUI(voiceLanguage);
             historyData = data.history;
@@ -547,177 +648,23 @@
             }
         });
 
-        document.getElementById('shopNameInput').onchange = () => {
-            const newName = document.getElementById('shopNameInput').value;
-            document.getElementById('shop-name-display').innerText = newName;
-            saveSettings();
-        };
-
-        function updateLangUI(lang) {
-            document.querySelectorAll('.lang-btn').forEach(btn => {
-                if (btn.innerText.includes(lang) || 
-                   (lang === 'Hindi' && btn.innerText.includes('हिन्दी')) ||
-                   (lang === 'Marathi' && btn.innerText.includes('मराठी'))) {
-                    btn.classList.add('active');
-                } else {
-                    btn.classList.remove('active');
-                }
-            });
-        }
-
-        socket.on('job-received', (job) => {
-            if (voiceEnabled) {
-                playTingDing();
-                const utterance = speak("starting");
-                // Tone starts after the speech finishes (approx 3-4 seconds later)
-                if (utterance) {
-                    utterance.onend = () => startProcessingTone();
-                } else {
-                    setTimeout(startProcessingTone, 4000);
-                }
-            }
+        const settingInputs = ['shopNameInput', 'passportPrinter', 'documentPrinter'];
+        settingInputs.forEach(id => {
+            document.getElementById(id).onchange = () => saveSettings();
         });
-
-        socket.on('job-completed', (job) => {
-            // Show preview immediately
-            updatePreview(job, true);
-            refreshHistory();
-            // We wait for 'print-finished' from the local agent to stop tone and speak
-        });
-
-        socket.on('print-finished', (data) => {
-            console.log("Print confirmed by agent for job:", data.jobId);
-            stopProcessingTone();
-            
-            let layout = "8";
-            // Robust lookup: check currentJob or search historyData
-            if (currentJob && String(currentJob.id) == String(data.jobId)) {
-                layout = currentJob.layout;
-            } else {
-                // Search historyData if currentJob doesn't match
-                const pastJob = historyData.find(j => String(j.id) == String(data.jobId));
-                if (pastJob) layout = pastJob.layout;
-            }
-            
-            if (voiceEnabled) {
-                speak("finished", layout);
-            }
-        });
-
-        let selectedFiles = [];
-
-        manualUpload.onchange = () => {
-            const files = Array.from(manualUpload.files);
-            if (files.length > 0) {
-                // Add new files to our accumulator, max 8
-                files.forEach(file => {
-                    if (selectedFiles.length < 8) {
-                        selectedFiles.push(file);
-                    }
-                });
-                renderSelectedFiles();
-            }
-            manualUpload.value = ''; // Reset input so same file can be picked again if needed
-        };
-
-        function renderSelectedFiles() {
-            const status = document.getElementById('selection-status');
-            const countSpan = document.getElementById('selected-count');
-            
-            if (selectedFiles.length > 0) {
-                status.style.display = 'block';
-                countSpan.innerText = selectedFiles.length;
-                
-                // Show small thumbnails or names
-                let listHtml = '<div style="display: flex; gap: 5px; flex-wrap: wrap; margin-top: 8px;">';
-                selectedFiles.forEach((f, idx) => {
-                    listHtml += `
-                        <div style="background: #f1f5f9; padding: 4px 8px; border-radius: 4px; font-size: 11px; display: flex; align-items: center; gap: 6px; border: 1px solid #e2e8f0;">
-                            <span>Photo ${idx+1}</span>
-                            <i class="fas fa-times" onclick="removeFile(${idx})" style="color: #ef4444; cursor: pointer;"></i>
-                        </div>
-                    `;
-                });
-                listHtml += '</div>';
-                
-                // Remove old list if exists
-                const oldList = status.querySelector('.file-list');
-                if (oldList) oldList.remove();
-                
-                const listDiv = document.createElement('div');
-                listDiv.className = 'file-list';
-                listDiv.innerHTML = listHtml;
-                status.appendChild(listDiv);
-            } else {
-                status.style.display = 'none';
-            }
-        }
-
-        function removeFile(idx) {
-            selectedFiles.splice(idx, 1);
-            renderSelectedFiles();
-        }
-
-        async function triggerUpload(layout) {
-            if (!selectedFiles.length) {
-                alert("Please select photo(s) first!");
-                document.getElementById('manualUpload').click();
-                return;
-            }
-
-            const formData = new FormData();
-            selectedFiles.forEach(file => {
-                formData.append('image', file);
-            });
-            formData.append('layout', layout);
-
-            const btn = event.target;
-            const originalText = btn.innerHTML;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
-            btn.disabled = true;
-
-            try {
-                const res = await fetch('/upload', {
-                    method: 'POST',
-                    body: formData
-                });
-                if (res.ok) {
-                    selectedFiles = []; // Clear selection
-                    renderSelectedFiles();
-                } else {
-                    alert("Upload failed.");
-                }
-            } catch (e) {
-                alert("Network error.");
-            } finally {
-                btn.innerHTML = originalText;
-                btn.disabled = false;
-            }
-        }
-
-        voiceToggle.onchange = () => {
-            voiceEnabled = voiceToggle.checked;
-            saveSettings();
-        };
-
-        function setLang(lang, shouldSpeak = true) {
-            voiceLanguage = lang;
-            updateLangUI(lang);
-            saveSettings();
-            if (shouldSpeak) {
-                let msg = "Language changed to English";
-                if (lang === 'Hindi') msg = "भाषा बदल दी गई है";
-                if (lang === 'Marathi') msg = "भाषा बदलली आहे";
-                speak(msg);
-            }
-        }
 
         function saveSettings() {
-            const shopName = document.getElementById('shopNameInput').value;
+            const settings = {
+                shopName: document.getElementById('shopNameInput').value,
+                passportPrinter: document.getElementById('passportPrinter').value,
+                documentPrinter: document.getElementById('documentPrinter').value,
+                voiceLanguage,
+                voiceEnabled
+            };
             fetch('/settings', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ voiceLanguage, voiceEnabled, shopName })
+                body: JSON.stringify(settings)
             });
         }
 
@@ -859,12 +806,44 @@
             if (autoPrint) {
                 img.onload = () => {
                     console.log("Job completed. Local agent will handle silent printing.");
-                    // Optional: Speak "arrived" when preview is ready
                     speak("arrived");
                 };
             }
             
             previewArea.appendChild(img);
+            resetFilters();
+        }
+
+        function applyFilters() {
+            const img = document.getElementById('live-preview');
+            if (!img) return;
+
+            const brightness = document.getElementById('adj-brightness').value;
+            const contrast = document.getElementById('adj-contrast').value;
+            const scale = document.getElementById('adj-scale').value / 100;
+            const mode = document.getElementById('adj-mode').value;
+
+            let filterStr = `brightness(${brightness}%) contrast(${contrast}%)`;
+            if (mode === 'grayscale') filterStr += ' grayscale(100%)';
+
+            img.style.filter = filterStr;
+            img.style.transform = `scale(${scale})`;
+            img.style.transformOrigin = 'center';
+        }
+
+        function resetFilters() {
+            document.getElementById('adj-brightness').value = 100;
+            document.getElementById('adj-contrast').value = 100;
+            document.getElementById('adj-scale').value = 100;
+            document.getElementById('adj-mode').value = 'color';
+            applyFilters();
+        }
+
+        function autoEnhance() {
+            document.getElementById('adj-brightness').value = 110;
+            document.getElementById('adj-contrast').value = 120;
+            applyFilters();
+            speak("Auto enhancement applied");
         }
 
         function printViaIframe(url, orientation = "auto") {
@@ -918,9 +897,201 @@
                 .then(data => {
                     historyData = data;
                     historyList.innerHTML = '';
-                    data.forEach(addJobToHistory);
+                    
+                    // Filter based on tab
+                    const filtered = data.filter(job => {
+                        if (currentTab === 'passport') {
+                            return !job.type || job.type === 'passport';
+                        } else {
+                            return job.type === 'id_card' || job.type === 'pdf';
+                        }
+                    });
+                    
+                    filtered.forEach(addJobToHistory);
                     updateStats();
                 });
+        }
+
+        let selectedFiles = [];
+
+        manualUpload.onchange = () => {
+            const files = Array.from(manualUpload.files);
+            if (files.length > 0) {
+                files.forEach(file => {
+                    if (selectedFiles.length < 8) {
+                        selectedFiles.push(file);
+                    }
+                });
+                renderSelectedFiles();
+            }
+            manualUpload.value = '';
+        };
+
+        function renderSelectedFiles() {
+            const status = document.getElementById('selection-status');
+            const countSpan = document.getElementById('selected-count');
+            const listContainer = status.querySelector('.file-list');
+            
+            if (selectedFiles.length > 0) {
+                status.style.display = 'block';
+                countSpan.innerText = selectedFiles.length;
+                listContainer.innerHTML = '';
+                selectedFiles.forEach((f, idx) => {
+                    const item = document.createElement('div');
+                    item.style.cssText = 'background: white; padding: 4px 10px; border-radius: 8px; font-size: 11px; display: flex; align-items: center; gap: 8px; border: 1px solid #e2e8f0; box-shadow: 0 1px 2px rgba(0,0,0,0.05);';
+                    item.innerHTML = `
+                        <span style="max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${f.name}</span>
+                        <i class="fas fa-times" onclick="removeFile(${idx})" style="color: #ef4444; cursor: pointer; font-size: 10px;"></i>
+                    `;
+                    listContainer.appendChild(item);
+                });
+            } else {
+                status.style.display = 'none';
+            }
+        }
+
+        function clearSelection() {
+            selectedFiles = [];
+            renderSelectedFiles();
+        }
+
+        function removeFile(idx) {
+            selectedFiles.splice(idx, 1);
+            renderSelectedFiles();
+        }
+
+        async function triggerUpload(layout) {
+            if (!selectedFiles.length) {
+                alert("Please select photo(s) first!");
+                document.getElementById('manualUpload').click();
+                return;
+            }
+
+            const formData = new FormData();
+            selectedFiles.forEach(file => {
+                formData.append('image', file);
+            });
+            formData.append('layout', layout);
+
+            const btn = event.target;
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+            btn.disabled = true;
+
+            try {
+                const res = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                if (res.ok) {
+                    selectedFiles = []; 
+                    renderSelectedFiles();
+                } else {
+                    alert("Upload failed.");
+                }
+            } catch (e) {
+                alert("Network error.");
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        }
+
+        voiceToggle.onchange = () => {
+            voiceEnabled = voiceToggle.checked;
+            saveSettings();
+        };
+
+        function setLang(lang, shouldSpeak = true) {
+            voiceLanguage = lang;
+            updateLangUI(lang);
+            saveSettings();
+            if (shouldSpeak) {
+                let msg = "Language changed to English";
+                if (lang === 'Hindi') msg = "भाषा बदल दी गई है";
+                if (lang === 'Marathi') msg = "भाषा बदलली आहे";
+                speak(msg);
+            }
+        }
+
+        function updateLangUI(lang) {
+            document.querySelectorAll('.lang-btn').forEach(btn => {
+                if (btn.innerText.includes(lang) || 
+                   (lang === 'Hindi' && btn.innerText.includes('हिन्दी')) ||
+                   (lang === 'Marathi' && btn.innerText.includes('मराठी'))) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+        }
+
+        socket.on('job-received', (job) => {
+            if (voiceEnabled) {
+                playTingDing();
+                const utterance = speak("starting");
+                if (utterance) {
+                    utterance.onend = () => startProcessingTone();
+                } else {
+                    setTimeout(startProcessingTone, 4000);
+                }
+            }
+        });
+
+        socket.on('job-completed', (job) => {
+            updatePreview(job, true);
+            refreshHistory();
+        });
+
+        socket.on('print-finished', (data) => {
+            stopProcessingTone();
+            let layout = "8";
+            if (currentJob && String(currentJob.id) == String(data.jobId)) {
+                layout = currentJob.layout;
+            } else {
+                const pastJob = historyData.find(j => String(j.id) == String(data.jobId));
+                if (pastJob) layout = pastJob.layout;
+            }
+            if (voiceEnabled) {
+                speak("finished", layout);
+            }
+        });
+        // Voice Commands Recognition
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (SpeechRecognition) {
+            const recognition = new SpeechRecognition();
+            recognition.continuous = true;
+            recognition.interimResults = false;
+            recognition.lang = 'en-US';
+
+            recognition.onresult = (event) => {
+                const command = event.results[event.results.length - 1][0].transcript.toLowerCase();
+                console.log("Voice Command:", command);
+                
+                if (command.includes('print')) {
+                    manualPrint();
+                } else if (command.includes('enhance') || command.includes('auto')) {
+                    autoEnhance();
+                } else if (command.includes('reset')) {
+                    resetFilters();
+                } else if (command.includes('passport')) {
+                    switchTab('passport');
+                } else if (command.includes('id') || command.includes('card')) {
+                    switchTab('id_card');
+                } else if (command.includes('hindi')) {
+                    setLang('Hindi');
+                } else if (command.includes('english')) {
+                    setLang('English');
+                }
+            };
+
+            recognition.onerror = (e) => console.error("Speech Recognition Error:", e);
+            recognition.onend = () => recognition.start(); // Keep listening
+            
+            // Start recognition after user interaction
+            document.body.addEventListener('click', () => {
+                try { recognition.start(); } catch(e) {}
+            }, { once: true });
         }
     </script>
 </body>
