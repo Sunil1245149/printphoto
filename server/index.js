@@ -136,19 +136,16 @@ app.post('/customer/upload', upload.any(), async (req, res) => {
             const front = await sharp(frontFile.path).resize(idW, idH, { fit: 'cover' }).toBuffer();
             const back = await sharp(backFile.path).resize(idW, idH, { fit: 'cover' }).toBuffer();
             
-            // Create A4 Landscape (3508x2480 at 300 DPI) or smaller 1800x1200 for 6x4
-            // User said A4, but server seems optimized for 6x4 (1800x1200)
-            // Let's stick to 1800x1200 as it's standard for this app, but call it "ID Layout"
-            
-            const canvasW = 1800;
-            const canvasH = 1200;
+            // Create A4 Portrait (2480x3508 at 300 DPI)
+            const canvasW = 2480;
+            const canvasH = 3508;
             
             await sharp({
                 create: { width: canvasW, height: canvasH, channels: 4, background: { r: 255, g: 255, b: 255, alpha: 1 } }
             })
             .composite([
-                { input: front, top: 100, left: (canvasW - idW) / 2 },
-                { input: back, top: 100 + idH + 50, left: (canvasW - idW) / 2 }
+                { input: front, top: 200, left: (canvasW - idW) / 2 },
+                { input: back, top: 200 + idH + 100, left: (canvasW - idW) / 2 }
             ])
             .png()
             .toFile(outputPath);
@@ -472,15 +469,20 @@ const uploadHandler = [
 
         const job = {
             id: timestamp,
+            type: 'passport',
             status: 'Completed',
             layout: layout || "8",
             preview: `/outputs/print_${timestamp}.png`,
+            printer_id: 'passportPrinter',
             time: new Date().toLocaleTimeString()
         };
 
+        db.run(`INSERT INTO jobs (id, type, status, preview, printer_id, layout) VALUES (?, ?, ?, ?, ?, ?)`, 
+            [job.id, job.type, job.status, job.preview, job.printer_id, job.layout]);
+
         printQueue.push(job);
         history.unshift(job);
-        if (history.length > 50) history.pop();
+        if (history.length > 100) history.pop();
         saveHistory();
 
         io.emit('job-completed', job);
@@ -488,6 +490,7 @@ const uploadHandler = [
             url: job.preview, 
             id: job.id, 
             layout: job.layout,
+            type: job.type,
             printer_id: 'passportPrinter' 
         });
 
