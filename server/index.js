@@ -54,6 +54,7 @@ const db = new sqlite3.Database(path.join('history', 'database.sqlite'), (err) =
 });
 
 const settingsFile = 'settings.json';
+const historyFile = path.join('history', 'history.json');
 if (!fs.existsSync(settingsFile)) {
     fs.writeJsonSync(settingsFile, { 
         voiceEnabled: true, 
