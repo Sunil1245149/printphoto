@@ -96,9 +96,11 @@ app.get('/api/qr', async (req, res) => {
 
 // Customer Upload Handler
 app.post('/customer/upload', upload.any(), async (req, res) => {
+    console.log(`[CUSTOMER UPLOAD] Received upload request of type: ${req.body.type}`);
     try {
         const { type } = req.body;
         const files = req.files;
+        console.log(`[CUSTOMER UPLOAD] Files received: ${files ? files.length : 0}`);
         const timestamp = Date.now();
         const outputPath = path.join('outputs', `customer_${timestamp}.png`);
         
@@ -161,6 +163,7 @@ app.post('/customer/upload', upload.any(), async (req, res) => {
             type: job.type,
             printer_id: 'documentPrinter'
         });
+        console.log(`[CUSTOMER UPLOAD] Job ${job.id} emitted to merchant portal`);
         res.json({ success: true, jobId: timestamp });
     } catch (err) {
         console.error('Customer Upload Error:', err);

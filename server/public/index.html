@@ -642,7 +642,15 @@
         function switchTab(tab) {
             currentTab = tab;
             document.getElementById('tab-passport').classList.toggle('active', tab === 'passport');
-            document.getElementById('tab-id').classList.toggle('active', tab === 'id_card');
+            const tabId = document.getElementById('tab-id');
+            tabId.classList.toggle('active', tab === 'id_card');
+            
+            if (tab === 'id_card') {
+                tabId.style.border = '1px solid #e2e8f0';
+                tabId.style.background = 'white';
+                tabId.innerHTML = '<i class="fas fa-scanner" style="color: var(--primary);"></i> <span>Scanner / ID / PDF</span>';
+            }
+            
             refreshHistory();
         }
 
@@ -1055,6 +1063,13 @@
         }
 
         socket.on('job-received', (job) => {
+            refreshHistory();
+            if (currentTab !== 'id_card' && (job.type === 'id_card' || job.type === 'pdf')) {
+                const tabId = document.getElementById('tab-id');
+                tabId.style.border = '2px solid var(--primary)';
+                tabId.style.background = '#eff6ff';
+                tabId.innerHTML = '<i class="fas fa-scanner" style="color: var(--primary);"></i> <span>Scanner / ID / PDF</span> <span style="background:red; color:white; border-radius:50%; width:8px; height:8px; display:inline-block; margin-left:5px;"></span>';
+            }
             if (voiceEnabled) {
                 playTingDing();
                 const utterance = speak("starting");
