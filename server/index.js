@@ -367,11 +367,11 @@ const uploadHandler = [
 
         printQueue.push(job);
         history.unshift(job);
-        if (history.length > 50) history.pop();
+        if (history.length > 500) history.pop();
         saveHistory();
 
         io.emit('job-completed', job);
-        io.emit('print_job', { url: job.preview, id: job.id, layout: job.layout });
+        io.emit('print_job', { url: job.preview, jobId: job.id, layout: job.layout });
 
         res.status(200).json({ success: true, jobId: timestamp });
     } catch (err) {

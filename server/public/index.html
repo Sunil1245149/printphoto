@@ -522,26 +522,36 @@
             let todayJobsCount = 0;
             
             const todayStr = new Date().toDateString();
+            console.log("Updating stats. Today is:", todayStr);
             
-            historyData.forEach(job => {
-                // Check if job is from today
-                // Note: job.id is a timestamp
-                const jobDate = new Date(job.id).toDateString();
-                if (jobDate === todayStr) {
-                    todayJobsCount++;
-                    const cleanLayout = String(job.layout).trim();
-                    if (cleanLayout === "4") {
-                        totalEarnings += 25;
-                        totalPrints += 4;
-                    } else if (cleanLayout === "8" || cleanLayout === "2x4") {
-                        totalEarnings += 50;
-                        totalPrints += 8;
-                    } else if (cleanLayout === "Single") {
-                        totalEarnings += 50;
-                        totalPrints += 1;
+            if (Array.isArray(historyData)) {
+                historyData.forEach(job => {
+                    // Check if job is from today
+                    // Note: job.id is a timestamp (number or string)
+                    const idNum = parseInt(job.id);
+                    if (!isNaN(idNum)) {
+                        const jobDate = new Date(idNum).toDateString();
+                        if (jobDate === todayStr) {
+                            todayJobsCount++;
+                            const cleanLayout = String(job.layout || "8").trim();
+                            if (cleanLayout === "4") {
+                                totalEarnings += 25;
+                                totalPrints += 4;
+                            } else if (cleanLayout === "8" || cleanLayout === "2x4") {
+                                totalEarnings += 50;
+                                totalPrints += 8;
+                            } else if (cleanLayout === "Single") {
+                                totalEarnings += 50;
+                                totalPrints += 1;
+                            } else {
+                                // Default fallback for any other layout
+                                totalEarnings += 50;
+                                totalPrints += 8;
+                            }
+                        }
                     }
-                }
-            });
+                });
+            }
             
             document.getElementById('today-earnings').innerText = `₹${totalEarnings}`;
             document.getElementById('today-prints').innerText = totalPrints;
@@ -607,6 +617,9 @@
         socket.on('print-finished', (data) => {
             console.log("Print confirmed by agent for job:", data.jobId);
             stopProcessingTone();
+            
+            // Refresh history to update stats when print is successful
+            refreshHistory();
             
             let layout = "8";
             // Robust lookup: check currentJob or search historyData
