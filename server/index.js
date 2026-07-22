@@ -7,7 +7,6 @@ const Jimp = require('jimp');
 const path = require('path');
 const fs = require('fs-extra');
 const cors = require('cors');
-const QRCode = require('qrcode');
 
 const app = express();
 const server = http.createServer(app);
@@ -36,13 +35,12 @@ fs.ensureDirSync('history');
 
 const settingsFile = 'settings.json';
 const historyFile = path.join('history', 'history.json');
+
 if (!fs.existsSync(settingsFile)) {
     fs.writeJsonSync(settingsFile, { 
         voiceEnabled: true, 
         voiceLanguage: 'Hindi',
-        shopName: 'Easy Photo Print',
-        passportPrinter: 'Default',
-        documentPrinter: 'Default'
+        shopName: 'Easy Photo Print'
     });
 }
 
@@ -81,95 +79,6 @@ let printQueue = [];
 // API: Upload from Android App
 app.get('/', (req, res) => res.json({ status: 'online', message: 'Passport Print Server' }));
 app.get('/ping', (req, res) => res.send('pong'));
-
-// Merchant QR Code API
-app.get('/api/qr', async (req, res) => {
-    try {
-        const host = req.get('host');
-        const url = `http://${host}/customer.html`;
-        const qrDataUrl = await QRCode.toDataURL(url);
-        res.json({ url, qr: qrDataUrl });
-    } catch (err) {
-        res.status(500).json({ error: 'QR Generation failed' });
-    }
-});
-
-// Customer Upload Handler
-app.post('/customer/upload', upload.any(), async (req, res) => {
-    console.log(`[CUSTOMER UPLOAD] Received upload request of type: ${req.body.type}`);
-    try {
-        const { type } = req.body;
-        const files = req.files;
-        console.log(`[CUSTOMER UPLOAD] Files received: ${files ? files.length : 0}`);
-        const timestamp = Date.now();
-        const outputPath = path.join('outputs', `customer_${timestamp}.png`);
-        
-        let jobType = type || 'id_card';
-        let preview = '';
-        let printerId = 'documentPrinter';
-
-        if (jobType === 'id_card') {
-            // Logic to arrange Front & Back on A4
-            const frontFile = files[0];
-            const backFile = files[1] || files[0];
-            
-            const idW = 1000; // Approx 3.3 inch at 300 DPI
-            const idH = 630;  // Approx 2.1 inch at 300 DPI
-            
-            const front = await sharp(frontFile.path).resize(idW, idH, { fit: 'cover' }).toBuffer();
-            const back = await sharp(backFile.path).resize(idW, idH, { fit: 'cover' }).toBuffer();
-            
-            // Create A4 Portrait (2480x3508 at 300 DPI)
-            const canvasW = 2480;
-            const canvasH = 3508;
-            
-            await sharp({
-                create: { width: canvasW, height: canvasH, channels: 4, background: { r: 255, g: 255, b: 255, alpha: 1 } }
-            })
-            .composite([
-                { input: front, top: 200, left: (canvasW - idW) / 2 },
-                { input: back, top: 200 + idH + 100, left: (canvasW - idW) / 2 }
-            ])
-            .png()
-            .toFile(outputPath);
-            
-            preview = `/outputs/customer_${timestamp}.png`;
-        } else if (jobType === 'pdf') {
-            // For PDF, we just store it and notify merchant
-            const pdfFile = files[0];
-            const destPath = path.join('outputs', `doc_${timestamp}.pdf`);
-            await fs.move(pdfFile.path, destPath);
-            preview = `/outputs/doc_${timestamp}.pdf`;
-            jobType = 'pdf';
-        }
-
-        const job = {
-            id: timestamp,
-            type: jobType,
-            status: 'Pending',
-            preview: preview,
-            printer_id: printerId,
-            time: new Date().toLocaleTimeString()
-        };
-
-        history.unshift(job);
-        if (history.length > 100) history.pop();
-        saveHistory();
-
-        io.emit('job-received', job);
-        io.emit('print_job', {
-            url: job.preview,
-            id: job.id,
-            type: job.type,
-            printer_id: 'documentPrinter'
-        });
-        console.log(`[CUSTOMER UPLOAD] Job ${job.id} emitted to merchant portal`);
-        res.json({ success: true, jobId: timestamp });
-    } catch (err) {
-        console.error('Customer Upload Error:', err);
-        res.status(500).json({ error: 'Upload failed' });
-    }
-});
 
 // Support both /upload and /api/upload
 const uploadHandler = [
@@ -450,27 +359,19 @@ const uploadHandler = [
 
         const job = {
             id: timestamp,
-            type: 'passport',
             status: 'Completed',
             layout: layout || "8",
             preview: `/outputs/print_${timestamp}.png`,
-            printer_id: 'passportPrinter',
             time: new Date().toLocaleTimeString()
         };
 
         printQueue.push(job);
         history.unshift(job);
-        if (history.length > 100) history.pop();
+        if (history.length > 50) history.pop();
         saveHistory();
 
         io.emit('job-completed', job);
-        io.emit('print_job', { 
-            url: job.preview, 
-            id: job.id, 
-            layout: job.layout,
-            type: job.type,
-            printer_id: 'passportPrinter' 
-        });
+        io.emit('print_job', { url: job.preview, id: job.id, layout: job.layout });
 
         res.status(200).json({ success: true, jobId: timestamp });
     } catch (err) {

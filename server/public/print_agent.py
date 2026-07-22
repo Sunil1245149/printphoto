@@ -77,39 +77,17 @@ def main():
     except Exception:
         DOWNLOAD_DIR = script_dir
 
-    server_settings = {}
-    
-    def fetch_settings():
-        nonlocal server_settings
-        try:
-            r = requests.get(f"{server_url}/settings", timeout=10)
-            if r.status_code == 200:
-                server_settings = r.json()
-                print(f"⚙️  Settings Sync: Passport->{server_settings.get('passportPrinter')}, Document->{server_settings.get('documentPrinter')}")
-        except:
-            pass
-
     def on_print_job_handler(data):
         url = data.get('url')
-        job_id = data.get('id', data.get('jobId', 'Unknown'))
-        printer_key = data.get('printer_id', 'passportPrinter')
-        
+        job_id = data.get('jobId', 'Unknown')
         if not url: return
-        
-        # Refresh settings before each job to be sure
-        fetch_settings()
-        target_printer = server_settings.get(printer_key, 'Default')
         
         image_url = url if url.startswith('http') else f"{server_url}{url}"
         print(f"\n[NEW JOB] Received: {image_url} (Job ID: {job_id})")
-        print(f"🖨️  Target Printer: {target_printer} ({printer_key})")
         
         file_path = os.path.join(DOWNLOAD_DIR, f"print_{int(time.time())}.png")
-        if url.endswith('.pdf'):
-            file_path = file_path.replace('.png', '.pdf')
-
         try:
-            print("⏳ Downloading file...")
+            print("⏳ Downloading image...")
             response = requests.get(image_url, timeout=30)
             if response.status_code == 200:
                 with open(file_path, 'wb') as f:
@@ -117,36 +95,32 @@ def main():
                 
                 print(f"✅ Saved: {file_path}")
                 abs_path = os.path.abspath(file_path)
+                print(f"🖨️  Sending to default printer: {abs_path}")
                 
                 if os.name == 'nt': # Windows
-                    print(f"🖨️  Starting PowerShell print to: {target_printer}")
+                    print(f"🖨️  Starting PowerShell print (Direct)...")
                     escaped_path = abs_path.replace('\\', '/')
-                    
-                    # Handle PDF or Image
-                    if file_path.endswith('.pdf'):
-                        ps_script = f'Start-Process -FilePath "{abs_path}" -Verb PrintTo -ArgumentList "{target_printer}"'
-                    else:
-                        ps_script = f"""
-                        Add-Type -AssemblyName System.Drawing
-                        $doc = New-Object System.Drawing.Printing.PrintDocument
-                        if ("{target_printer}" -ne "Default") {{ $doc.PrinterSettings.PrinterName = "{target_printer}" }}
-                        $doc.DocumentName = "Photo Print"
-                        $img = [System.Drawing.Image]::FromFile("{escaped_path}")
-                        if ($img.Width -gt $img.Height) {{ $doc.DefaultPageSettings.Landscape = $true }} else {{ $doc.DefaultPageSettings.Landscape = $false }}
-                        $doc.DefaultPageSettings.Color = $true
-                        $doc.DefaultPageSettings.Margins = New-Object System.Drawing.Printing.Margins(0,0,0,0)
-                        $doc.OriginAtMargins = $false
-                        $doc.add_PrintPage({{
-                            param($sender, $e)
+                    ps_script = f"""
+                    Add-Type -AssemblyName System.Drawing
+                    $doc = New-Object System.Drawing.Printing.PrintDocument
+                    $doc.DocumentName = "Passport Photo Print"
+                    $img = [System.Drawing.Image]::FromFile("{escaped_path}")
+                    if ($img.Width -gt $img.Height) {{ $doc.DefaultPageSettings.Landscape = $true }} else {{ $doc.DefaultPageSettings.Landscape = $false }}
+                    $doc.DefaultPageSettings.Color = $true
+                    $doc.DefaultPageSettings.Margins = New-Object System.Drawing.Printing.Margins(0,0,0,0)
+                    $doc.OriginAtMargins = $false
+                    $doc.add_PrintPage({{
+                        param($sender, $e)
+                        try {{
                             $graphics = $e.Graphics
                             $rect = $e.PageBounds
                             $graphics.DrawImage($img, 0, 0, $rect.Width, $rect.Height)
                             $e.HasMorePages = $false
-                        }})
-                        $doc.Print()
-                        $img.Dispose()
-                        """
-                    
+                        }} catch {{ Write-Error "Error in PrintPage: $_" }}
+                    }})
+                    $doc.Print()
+                    $img.Dispose()
+                    """
                     result = subprocess.run(["powershell", "-Command", ps_script], capture_output=True, text=True)
                     if result.stderr: print(f"❌ PowerShell Error: {result.stderr}")
                     else:
@@ -154,11 +128,7 @@ def main():
                         try: requests.post(f"{server_url}/api/print-success", json={"jobId": job_id})
                         except: pass
                 else: # Linux/Mac
-                    lp_cmd = ["lp"]
-                    if target_printer != "Default":
-                        lp_cmd.extend(["-d", target_printer])
-                    lp_cmd.append(file_path)
-                    subprocess.run(lp_cmd)
+                    subprocess.run(["lp", file_path])
                     try: requests.post(f"{server_url}/api/print-success", json={"jobId": job_id})
                     except: pass
             else:

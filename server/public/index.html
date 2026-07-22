@@ -102,11 +102,6 @@
             70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(34, 197, 94, 0); }
             100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
         }
-        @keyframes pulse-green {
-            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); }
-            70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(34, 197, 94, 0); }
-            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
-        }
 
         .main-grid {
             display: grid;
@@ -306,15 +301,7 @@
         <header>
             <div class="logo">
                 <i class="fas fa-print"></i>
-                <div>
-                    <h1 id="shop-name-display">Easy Photo Print</h1>
-                    <div style="display: flex; align-items: center; gap: 6px;">
-                        <span style="display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; background: #dcfce7; color: #166534; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase; border: 1px solid #bbf7d0;">
-                            <i class="fas fa-scanner"></i> Scanner Active
-                        </span>
-                        <span id="scanner-pulse" style="width: 8px; height: 8px; background: #22c55e; border-radius: 50%; box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); animation: pulse-green 2s infinite;"></span>
-                    </div>
-                </div>
+                <h1 id="shop-name-display">Easy Photo Print</h1>
             </div>
             <div class="header-actions">
                 <div class="server-status">
@@ -349,17 +336,7 @@
 
         <div class="main-grid">
             <!-- Sidebar Actions -->
-            <div class="card" style="border: 2px solid var(--primary); background: #f8faff;">
-                <h3 style="color: var(--primary);"><i class="fas fa-qrcode"></i> CUSTOMER SCANNER QR</h3>
-                <div id="qr-container" style="text-align: center; background: white; padding: 20px; border-radius: 16px; border: 1px solid #dbeafe; margin-bottom: 20px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);">
-                    <img id="merchant-qr" style="width: 180px; height: 180px; background: white; display: block; margin: 0 auto 15px; border: 1px solid #e2e8f0; padding: 10px; border-radius: 8px;">
-                    <div style="background: #fffbeb; border: 1px solid #fde68a; padding: 10px; border-radius: 8px; margin-bottom: 10px;">
-                        <p style="font-size: 13px; color: #92400e; font-weight: 800; margin: 0; text-transform: uppercase;">SCAN TO UPLOAD</p>
-                        <p style="font-size: 11px; color: #b45309; margin: 2px 0 0;">Customer scans this to send ID/PDF</p>
-                    </div>
-                    <a id="qr-link" target="_blank" style="font-size: 11px; color: var(--primary); text-decoration: none; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: monospace;"></a>
-                </div>
-
+            <div class="card">
                 <h3><i class="fas fa-bolt"></i> Quick Actions</h3>
                 
                 <!-- Selection Status & Accumulator -->
@@ -422,17 +399,7 @@
                     </div>
                 </div>
 
-                <h3 style="margin-top: 32px;"><i class="fas fa-print"></i> Printer Settings</h3>
-                <div style="margin-bottom: 12px;">
-                    <label style="display: block; font-size: 11px; font-weight: 600; color: var(--text-light); margin-bottom: 4px;">Passport Printer (App)</label>
-                    <input type="text" id="passportPrinter" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px;" placeholder="Printer Name">
-                </div>
-                <div style="margin-bottom: 20px;">
-                    <label style="display: block; font-size: 11px; font-weight: 600; color: var(--text-light); margin-bottom: 4px;">ID/PDF Printer (Scanner)</label>
-                    <input type="text" id="documentPrinter" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px;" placeholder="Printer Name">
-                </div>
-
-                <h3 style="margin-top: 32px;"><i class="fas fa-cog"></i> Shop Settings</h3>
+                <h3 style="margin-top: 32px;"><i class="fas fa-cog"></i> Settings</h3>
                 <div style="margin-bottom: 15px;">
                     <label style="display: block; font-size: 12px; font-weight: 600; color: var(--text-light); margin-bottom: 4px;">Shop Name</label>
                     <input type="text" id="shopNameInput" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 14px;" placeholder="Enter Shop Name">
@@ -444,14 +411,7 @@
 
             <!-- History -->
             <div class="card">
-                <div style="display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid #f1f5f9; padding-bottom: 10px;">
-                    <button class="lang-btn active" id="tab-passport" onclick="switchTab('passport')" style="flex: 1;">Passport</button>
-                    <button class="lang-btn" id="tab-id" onclick="switchTab('id_card')" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px; border: 1px solid #e2e8f0;">
-                        <i class="fas fa-scanner" style="color: var(--primary);"></i> 
-                        <span>Scanner / ID / PDF</span>
-                    </button>
-                </div>
-                <h3 id="history-title"><i class="fas fa-history"></i> Live Print Queue</h3>
+                <h3><i class="fas fa-history"></i> Live Print Queue</h3>
                 <div id="history-list" class="history-list">
                     <!-- History items -->
                 </div>
@@ -468,45 +428,10 @@
                         </div>
                     </div>
                     <div id="job-details" style="margin-top: 20px; display: none;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
                             <span id="job-id-label" style="font-weight: 800; color: var(--primary);"></span>
-                            <div style="display: flex; gap: 8px;">
-                                <button onclick="autoEnhance()" class="action-button" style="margin: 0; padding: 6px 12px; font-size: 12px; background: #ecfdf5; border-color: #10b981; color: #065f46;">
-                                    <i class="fas fa-magic"></i> Auto Enhance
-                                </button>
-                                <button onclick="manualPrint()" class="action-button primary" style="margin: 0; padding: 6px 12px; font-size: 12px;">
-                                    <i class="fas fa-print"></i> Print Now
-                                </button>
-                            </div>
-                        </div>
-                        
-                        <!-- Image Adjustments -->
-                        <div style="background: #f8fafc; padding: 15px; border-radius: 12px; border: 1px solid #e2e8f0;">
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 10px;">
-                                <div>
-                                    <label style="display: block; font-size: 11px; font-weight: 600; color: var(--text-light); margin-bottom: 5px;">Brightness</label>
-                                    <input type="range" id="adj-brightness" min="50" max="150" value="100" oninput="applyFilters()" style="width: 100%;">
-                                </div>
-                                <div>
-                                    <label style="display: block; font-size: 11px; font-weight: 600; color: var(--text-light); margin-bottom: 5px;">Contrast</label>
-                                    <input type="range" id="adj-contrast" min="50" max="150" value="100" oninput="applyFilters()" style="width: 100%;">
-                                </div>
-                            </div>
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                                <div>
-                                    <label style="display: block; font-size: 11px; font-weight: 600; color: var(--text-light); margin-bottom: 5px;">Scale (%)</label>
-                                    <input type="range" id="adj-scale" min="50" max="150" value="100" oninput="applyFilters()" style="width: 100%;">
-                                </div>
-                                <div>
-                                    <label style="display: block; font-size: 11px; font-weight: 600; color: var(--text-light); margin-bottom: 5px;">Mode</label>
-                                    <select id="adj-mode" onchange="applyFilters()" style="width: 100%; padding: 4px; border-radius: 4px; border: 1px solid #e2e8f0; font-size: 12px;">
-                                        <option value="color">Color</option>
-                                        <option value="grayscale">Black & White</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <button onclick="resetFilters()" style="width: 100%; margin-top: 10px; background: none; border: none; font-size: 11px; color: var(--text-light); cursor: pointer;">
-                                <i class="fas fa-undo"></i> Reset All Adjustments
+                            <button onclick="manualPrint()" style="background: none; border: 1px solid #e2e8f0; padding: 6px 12px; border-radius: 8px; cursor: pointer;">
+                                <i class="fas fa-print"></i>
                             </button>
                         </div>
                     </div>
@@ -529,7 +454,6 @@
         const manualUpload = document.getElementById('manualUpload');
 
         let currentJob = null;
-        let currentTab = 'passport';
         let historyData = [];
         let processingInterval = null;
 
@@ -624,36 +548,6 @@
             document.getElementById('today-jobs').innerText = todayJobsCount;
         }
 
-        let currentTab = 'passport';
-
-        async function initMerchant() {
-            try {
-                const res = await fetch('/api/qr');
-                const data = await res.json();
-                document.getElementById('merchant-qr').src = data.qr;
-                document.getElementById('qr-link').href = data.url;
-                document.getElementById('qr-link').innerText = data.url;
-            } catch (e) {
-                console.error("QR Error:", e);
-            }
-        }
-        initMerchant();
-
-        function switchTab(tab) {
-            currentTab = tab;
-            document.getElementById('tab-passport').classList.toggle('active', tab === 'passport');
-            const tabId = document.getElementById('tab-id');
-            tabId.classList.toggle('active', tab === 'id_card');
-            
-            if (tab === 'id_card') {
-                tabId.style.border = '1px solid #e2e8f0';
-                tabId.style.background = 'white';
-                tabId.innerHTML = '<i class="fas fa-scanner" style="color: var(--primary);"></i> <span>Scanner / ID / PDF</span>';
-            }
-            
-            refreshHistory();
-        }
-
         socket.on('initial-data', (data) => {
             voiceEnabled = data.settings.voiceEnabled !== undefined ? data.settings.voiceEnabled : true;
             voiceLanguage = data.settings.voiceLanguage || 'Hindi';
@@ -662,10 +556,6 @@
             voiceToggle.checked = voiceEnabled;
             document.getElementById('shopNameInput').value = shopName;
             document.getElementById('shop-name-display').innerText = shopName;
-            
-            // Printer settings
-            document.getElementById('passportPrinter').value = data.settings.passportPrinter || 'Default';
-            document.getElementById('documentPrinter').value = data.settings.documentPrinter || 'Default';
             
             updateLangUI(voiceLanguage);
             historyData = data.history;
@@ -676,23 +566,173 @@
             }
         });
 
-        const settingInputs = ['shopNameInput', 'passportPrinter', 'documentPrinter'];
-        settingInputs.forEach(id => {
-            document.getElementById(id).onchange = () => saveSettings();
+        document.getElementById('shopNameInput').onchange = () => {
+            const newName = document.getElementById('shopNameInput').value;
+            document.getElementById('shop-name-display').innerText = newName;
+            saveSettings();
+        };
+
+        function updateLangUI(lang) {
+            document.querySelectorAll('.lang-btn').forEach(btn => {
+                if (btn.innerText.includes(lang) || 
+                   (lang === 'Hindi' && btn.innerText.includes('हिन्दी')) ||
+                   (lang === 'Marathi' && btn.innerText.includes('मराठी'))) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+        }
+
+        socket.on('job-received', (job) => {
+            if (voiceEnabled) {
+                playTingDing();
+                const utterance = speak("starting");
+                // Tone starts after the speech finishes (approx 3-4 seconds later)
+                if (utterance) {
+                    utterance.onend = () => startProcessingTone();
+                } else {
+                    setTimeout(startProcessingTone, 4000);
+                }
+            }
         });
 
+        socket.on('job-completed', (job) => {
+            // Show preview immediately
+            updatePreview(job, true);
+            refreshHistory();
+            // We wait for 'print-finished' from the local agent to stop tone and speak
+        });
+
+        socket.on('print-finished', (data) => {
+            console.log("Print confirmed by agent for job:", data.jobId);
+            stopProcessingTone();
+            
+            let layout = "8";
+            // Robust lookup: check currentJob or search historyData
+            if (currentJob && String(currentJob.id) == String(data.jobId)) {
+                layout = currentJob.layout;
+            } else {
+                // Search historyData if currentJob doesn't match
+                const pastJob = historyData.find(j => String(j.id) == String(data.jobId));
+                if (pastJob) layout = pastJob.layout;
+            }
+            
+            if (voiceEnabled) {
+                speak("finished", layout);
+            }
+        });
+
+        let selectedFiles = [];
+
+        manualUpload.onchange = () => {
+            const files = Array.from(manualUpload.files);
+            if (files.length > 0) {
+                // Add new files to our accumulator, max 8
+                files.forEach(file => {
+                    if (selectedFiles.length < 8) {
+                        selectedFiles.push(file);
+                    }
+                });
+                renderSelectedFiles();
+            }
+            manualUpload.value = ''; // Reset input so same file can be picked again if needed
+        };
+
+        function renderSelectedFiles() {
+            const status = document.getElementById('selection-status');
+            const countSpan = document.getElementById('selected-count');
+            const listContainer = status.querySelector('.file-list');
+            
+            if (selectedFiles.length > 0) {
+                status.style.display = 'block';
+                countSpan.innerText = selectedFiles.length;
+                
+                listContainer.innerHTML = '';
+                selectedFiles.forEach((f, idx) => {
+                    const item = document.createElement('div');
+                    item.style.cssText = 'background: white; padding: 4px 10px; border-radius: 8px; font-size: 11px; display: flex; align-items: center; gap: 8px; border: 1px solid #e2e8f0; box-shadow: 0 1px 2px rgba(0,0,0,0.05);';
+                    item.innerHTML = `
+                        <span style="max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${f.name}</span>
+                        <i class="fas fa-times" onclick="removeFile(${idx})" style="color: #ef4444; cursor: pointer; font-size: 10px;"></i>
+                    `;
+                    listContainer.appendChild(item);
+                });
+            } else {
+                status.style.display = 'none';
+            }
+        }
+
+        function clearSelection() {
+            selectedFiles = [];
+            renderSelectedFiles();
+        }
+
+        function removeFile(idx) {
+            selectedFiles.splice(idx, 1);
+            renderSelectedFiles();
+        }
+
+        async function triggerUpload(layout) {
+            if (!selectedFiles.length) {
+                alert("Please select photo(s) first!");
+                document.getElementById('manualUpload').click();
+                return;
+            }
+
+            const formData = new FormData();
+            selectedFiles.forEach(file => {
+                formData.append('image', file);
+            });
+            formData.append('layout', layout);
+
+            const btn = event.target;
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+            btn.disabled = true;
+
+            try {
+                const res = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                if (res.ok) {
+                    selectedFiles = []; // Clear selection
+                    renderSelectedFiles();
+                } else {
+                    alert("Upload failed.");
+                }
+            } catch (e) {
+                alert("Network error.");
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        }
+
+        voiceToggle.onchange = () => {
+            voiceEnabled = voiceToggle.checked;
+            saveSettings();
+        };
+
+        function setLang(lang, shouldSpeak = true) {
+            voiceLanguage = lang;
+            updateLangUI(lang);
+            saveSettings();
+            if (shouldSpeak) {
+                let msg = "Language changed to English";
+                if (lang === 'Hindi') msg = "भाषा बदल दी गई है";
+                if (lang === 'Marathi') msg = "भाषा बदलली आहे";
+                speak(msg);
+            }
+        }
+
         function saveSettings() {
-            const settings = {
-                shopName: document.getElementById('shopNameInput').value,
-                passportPrinter: document.getElementById('passportPrinter').value,
-                documentPrinter: document.getElementById('documentPrinter').value,
-                voiceLanguage,
-                voiceEnabled
-            };
+            const shopName = document.getElementById('shopNameInput').value;
             fetch('/settings', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify(settings)
+                body: JSON.stringify({ voiceLanguage, voiceEnabled, shopName })
             });
         }
 
@@ -781,19 +821,11 @@
         function createJobElement(job) {
             const div = document.createElement('div');
             div.className = 'print-item';
-            const isScanner = job.type === 'id_card' || job.type === 'pdf';
-            const typeLabel = isScanner ? 
-                '<span style="font-size: 10px; background: #fffbeb; color: #92400e; padding: 2px 6px; border-radius: 4px; border: 1px solid #fde68a; font-weight: 700;"><i class="fas fa-scanner"></i> SCANNER</span>' : 
-                '<span style="font-size: 10px; background: #eff6ff; color: #1e40af; padding: 2px 6px; border-radius: 4px; border: 1px solid #bfdbfe; font-weight: 700;"><i class="fas fa-camera"></i> PASSPORT</span>';
-            
             div.innerHTML = `
                 <img src="${job.preview}" alt="Preview" onclick="updatePreview(${JSON.stringify(job).replace(/"/g, '&quot;')})">
                 <div class="job-info">
-                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
-                        <div class="job-id">Job #${job.id.toString().slice(-4)}</div>
-                        ${typeLabel}
-                    </div>
-                    <div class="job-time">${job.layout || 'ID Layout'} • ${job.time}</div>
+                    <div class="job-id">Job #${job.id.toString().slice(-4)}</div>
+                    <div class="job-time">${job.layout} Photos • ${job.time}</div>
                 </div>
                 <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 8px;">
                     <span class="job-status status-${job.status?.toLowerCase()}">${job.status}</span>
@@ -842,44 +874,12 @@
             if (autoPrint) {
                 img.onload = () => {
                     console.log("Job completed. Local agent will handle silent printing.");
+                    // Optional: Speak "arrived" when preview is ready
                     speak("arrived");
                 };
             }
             
             previewArea.appendChild(img);
-            resetFilters();
-        }
-
-        function applyFilters() {
-            const img = document.getElementById('live-preview');
-            if (!img) return;
-
-            const brightness = document.getElementById('adj-brightness').value;
-            const contrast = document.getElementById('adj-contrast').value;
-            const scale = document.getElementById('adj-scale').value / 100;
-            const mode = document.getElementById('adj-mode').value;
-
-            let filterStr = `brightness(${brightness}%) contrast(${contrast}%)`;
-            if (mode === 'grayscale') filterStr += ' grayscale(100%)';
-
-            img.style.filter = filterStr;
-            img.style.transform = `scale(${scale})`;
-            img.style.transformOrigin = 'center';
-        }
-
-        function resetFilters() {
-            document.getElementById('adj-brightness').value = 100;
-            document.getElementById('adj-contrast').value = 100;
-            document.getElementById('adj-scale').value = 100;
-            document.getElementById('adj-mode').value = 'color';
-            applyFilters();
-        }
-
-        function autoEnhance() {
-            document.getElementById('adj-brightness').value = 110;
-            document.getElementById('adj-contrast').value = 120;
-            applyFilters();
-            speak("Auto enhancement applied");
         }
 
         function printViaIframe(url, orientation = "auto") {
@@ -933,208 +933,9 @@
                 .then(data => {
                     historyData = data;
                     historyList.innerHTML = '';
-                    
-                    // Filter based on tab
-                    const filtered = data.filter(job => {
-                        if (currentTab === 'passport') {
-                            return !job.type || job.type === 'passport';
-                        } else {
-                            return job.type === 'id_card' || job.type === 'pdf';
-                        }
-                    });
-                    
-                    filtered.forEach(addJobToHistory);
+                    data.forEach(addJobToHistory);
                     updateStats();
                 });
-        }
-
-        let selectedFiles = [];
-
-        manualUpload.onchange = () => {
-            const files = Array.from(manualUpload.files);
-            if (files.length > 0) {
-                files.forEach(file => {
-                    if (selectedFiles.length < 8) {
-                        selectedFiles.push(file);
-                    }
-                });
-                renderSelectedFiles();
-            }
-            manualUpload.value = '';
-        };
-
-        function renderSelectedFiles() {
-            const status = document.getElementById('selection-status');
-            const countSpan = document.getElementById('selected-count');
-            const listContainer = status.querySelector('.file-list');
-            
-            if (selectedFiles.length > 0) {
-                status.style.display = 'block';
-                countSpan.innerText = selectedFiles.length;
-                listContainer.innerHTML = '';
-                selectedFiles.forEach((f, idx) => {
-                    const item = document.createElement('div');
-                    item.style.cssText = 'background: white; padding: 4px 10px; border-radius: 8px; font-size: 11px; display: flex; align-items: center; gap: 8px; border: 1px solid #e2e8f0; box-shadow: 0 1px 2px rgba(0,0,0,0.05);';
-                    item.innerHTML = `
-                        <span style="max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${f.name}</span>
-                        <i class="fas fa-times" onclick="removeFile(${idx})" style="color: #ef4444; cursor: pointer; font-size: 10px;"></i>
-                    `;
-                    listContainer.appendChild(item);
-                });
-            } else {
-                status.style.display = 'none';
-            }
-        }
-
-        function clearSelection() {
-            selectedFiles = [];
-            renderSelectedFiles();
-        }
-
-        function removeFile(idx) {
-            selectedFiles.splice(idx, 1);
-            renderSelectedFiles();
-        }
-
-        async function triggerUpload(layout) {
-            if (!selectedFiles.length) {
-                alert("Please select photo(s) first!");
-                document.getElementById('manualUpload').click();
-                return;
-            }
-
-            const formData = new FormData();
-            selectedFiles.forEach(file => {
-                formData.append('image', file);
-            });
-            formData.append('layout', layout);
-
-            const btn = event.target;
-            const originalText = btn.innerHTML;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
-            btn.disabled = true;
-
-            try {
-                const res = await fetch('/upload', {
-                    method: 'POST',
-                    body: formData
-                });
-                if (res.ok) {
-                    selectedFiles = []; 
-                    renderSelectedFiles();
-                } else {
-                    alert("Upload failed.");
-                }
-            } catch (e) {
-                alert("Network error.");
-            } finally {
-                btn.innerHTML = originalText;
-                btn.disabled = false;
-            }
-        }
-
-        voiceToggle.onchange = () => {
-            voiceEnabled = voiceToggle.checked;
-            saveSettings();
-        };
-
-        function setLang(lang, shouldSpeak = true) {
-            voiceLanguage = lang;
-            updateLangUI(lang);
-            saveSettings();
-            if (shouldSpeak) {
-                let msg = "Language changed to English";
-                if (lang === 'Hindi') msg = "भाषा बदल दी गई है";
-                if (lang === 'Marathi') msg = "भाषा बदलली आहे";
-                speak(msg);
-            }
-        }
-
-        function updateLangUI(lang) {
-            document.querySelectorAll('.lang-btn').forEach(btn => {
-                if (btn.innerText.includes(lang) || 
-                   (lang === 'Hindi' && btn.innerText.includes('हिन्दी')) ||
-                   (lang === 'Marathi' && btn.innerText.includes('मराठी'))) {
-                    btn.classList.add('active');
-                } else {
-                    btn.classList.remove('active');
-                }
-            });
-        }
-
-        socket.on('job-received', (job) => {
-            refreshHistory();
-            if (currentTab !== 'id_card' && (job.type === 'id_card' || job.type === 'pdf')) {
-                const tabId = document.getElementById('tab-id');
-                tabId.style.border = '2px solid var(--primary)';
-                tabId.style.background = '#eff6ff';
-                tabId.innerHTML = '<i class="fas fa-scanner" style="color: var(--primary);"></i> <span>Scanner / ID / PDF</span> <span style="background:red; color:white; border-radius:50%; width:8px; height:8px; display:inline-block; margin-left:5px;"></span>';
-            }
-            if (voiceEnabled) {
-                playTingDing();
-                const utterance = speak("starting");
-                if (utterance) {
-                    utterance.onend = () => startProcessingTone();
-                } else {
-                    setTimeout(startProcessingTone, 4000);
-                }
-            }
-        });
-
-        socket.on('job-completed', (job) => {
-            updatePreview(job, true);
-            refreshHistory();
-        });
-
-        socket.on('print-finished', (data) => {
-            stopProcessingTone();
-            let layout = "8";
-            if (currentJob && String(currentJob.id) == String(data.jobId)) {
-                layout = currentJob.layout;
-            } else {
-                const pastJob = historyData.find(j => String(j.id) == String(data.jobId));
-                if (pastJob) layout = pastJob.layout;
-            }
-            if (voiceEnabled) {
-                speak("finished", layout);
-            }
-        });
-        // Voice Commands Recognition
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (SpeechRecognition) {
-            const recognition = new SpeechRecognition();
-            recognition.continuous = true;
-            recognition.interimResults = false;
-            recognition.lang = 'en-US';
-
-            recognition.onresult = (event) => {
-                const command = event.results[event.results.length - 1][0].transcript.toLowerCase();
-                console.log("Voice Command:", command);
-                
-                if (command.includes('print')) {
-                    manualPrint();
-                } else if (command.includes('enhance') || command.includes('auto')) {
-                    autoEnhance();
-                } else if (command.includes('reset')) {
-                    resetFilters();
-                } else if (command.includes('passport')) {
-                    switchTab('passport');
-                } else if (command.includes('id') || command.includes('card')) {
-                    switchTab('id_card');
-                } else if (command.includes('hindi')) {
-                    setLang('Hindi');
-                } else if (command.includes('english')) {
-                    setLang('English');
-                }
-            };
-
-            recognition.onerror = (e) => console.error("Speech Recognition Error:", e);
-            recognition.onend = () => recognition.start(); // Keep listening
-            
-            // Start recognition after user interaction
-            document.body.addEventListener('click', () => {
-                try { recognition.start(); } catch(e) {}
-            }, { once: true });
         }
     </script>
 </body>
